@@ -28,7 +28,6 @@ with Errout;   use Errout;
 with Exp_Util; use Exp_Util;
 with Hostparm; use Hostparm;
 with Itypes;   use Itypes;
-with Lib.Xref; use Lib.Xref;
 with Namet;    use Namet;
 with Nlists;   use Nlists;
 with Elists;   use Elists;
@@ -40,7 +39,6 @@ with Sem;      use Sem;
 with Sem_Cat;  use Sem_Cat;
 with Sem_Ch3;  use Sem_Ch3;
 with Sem_Ch8;  use Sem_Ch8;
--- with Sem_Dist; use Sem_Dist;
 with Sem_Eval; use Sem_Eval;
 with Sem_Res;  use Sem_Res;
 with Sem_Util; use Sem_Util;
@@ -560,8 +558,7 @@ package body Sem_Ch4 is
             --  Resolution yields a single interpretation. Verify that
             --  is has the proper capitalization.
 
-            Set_Entity_With_Style_Check (Nam, Entity (Nam));
-            Generate_Reference (Entity (Nam), Nam);
+            Set_Entity (Nam, Entity (Nam));
 
             Set_Etype (Nam, Etype (Entity (Nam)));
          end if;
@@ -969,11 +966,6 @@ package body Sem_Ch4 is
          Analyze (N);
       end if;
 
-      --  A value of remote access-to-class-wide must not be dereferenced
-      --  (RM E.2.2(16)).
-
-      Validate_Remote_Access_To_Class_Wide_Type (N);
-
    end Analyze_Explicit_Dereference;
 
    ------------------------
@@ -1241,7 +1233,7 @@ package body Sem_Ch4 is
       P_T := Base_Type (Etype (P));
 
       if Is_Entity_Name (P)
-        or else Nkind (P) = N_Operator_Symbol
+--        or else Nkind (P) = N_Operator_Symbol
       then
          U_N := Entity (P);
 
@@ -1543,7 +1535,7 @@ package body Sem_Ch4 is
 
          if not Is_Type (Nam) then
             if Is_Entity_Name (Name (N))
-              or else Nkind (Name (N)) = N_Operator_Symbol
+--              or else Nkind (Name (N)) = N_Operator_Symbol
             then
                Set_Entity (Name (N), Nam);
 
@@ -1744,8 +1736,7 @@ package body Sem_Ch4 is
                if Chars (Comp) = Chars (Sel)
                  and then Is_Visible_Component (Comp)
                then
-                  Set_Entity_With_Style_Check (Sel, Comp);
-                  Generate_Reference (Comp, Sel);
+                  Set_Entity (Sel, Comp);
 
                   Set_Etype (Sel, Etype (Comp));
                   Add_One_Interp (N, Etype (Comp), Etype (Comp));
@@ -2010,9 +2001,7 @@ package body Sem_Ch4 is
             if Chars (Comp) = Chars (Sel)
               and then Is_Visible_Component (Comp)
             then
-               Set_Entity_With_Style_Check (Sel, Comp);
-               Generate_Reference (Comp, Sel);
-
+               Set_Entity (Sel, Comp);
                Set_Etype (Sel, Etype (Comp));
 
                --  Resolve the prefix early otherwise it is not possible to
@@ -2186,7 +2175,7 @@ package body Sem_Ch4 is
 
                while Present (Comp) loop
                   if Chars (Comp) = Chars (Sel) then
-                     Set_Entity_With_Style_Check (Sel, Comp);
+                     Set_Entity (Sel, Comp);
                      Set_Etype (Sel, Etype (Comp));
                      Set_Etype (N,   Etype (Comp));
                      exit;
@@ -2215,8 +2204,7 @@ package body Sem_Ch4 is
                   if Chars (Comp) = Chars (Sel)
                     and then Is_Visible_Component (Comp)
                   then
-                     Set_Entity_With_Style_Check (Sel, Comp);
-                     Generate_Reference (Comp, Sel);
+                     Set_Entity (Sel, Comp);
                      Set_Etype (Sel, Etype (Comp));
                      Set_Etype (N,   Etype (Comp));
 
@@ -3400,10 +3388,6 @@ package body Sem_Ch4 is
          when E_Procedure =>
             Error_Msg_N
               ("procedure name cannot be used as operand", Enode);
-
-         when E_Exception =>
-            Error_Msg_N
-              ("exception name cannot be used as operand", Enode);
 
          when E_Block | E_Label | E_Loop =>
             Error_Msg_N

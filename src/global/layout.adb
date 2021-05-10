@@ -1777,9 +1777,7 @@ package body Layout is
 
                   if Warn_On_Export_Import
                     and then
-                      (Convention (E) = Convention_C
-                         or else
-                       Convention (E) = Convention_CPP)
+                      (Convention (E) = Convention_C)
                   then
                      Error_Msg_N
                        ("?this access type does not " &
@@ -1953,14 +1951,6 @@ package body Layout is
          --  Procressing for array types
 
          elsif Is_Array_Type (E) then
-
-            --  For arrays that are required to be atomic, we do the same
-            --  processing as described above for short records, since we
-            --  really need to have the alignment set for the whole array.
-
-            if Is_Atomic (E) and then not Debug_Flag_Q then
-               Set_Composite_Alignment (E);
-            end if;
 
             --  For unpacked array types, set an alignment of 1 if we know
             --  that the component alignment is not greater than 1. The reason

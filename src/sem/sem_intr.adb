@@ -328,8 +328,8 @@ package body Sem_Intr is
       then
          Check_Exception_Function (E, N);
 
-      elsif Nkind (E) = N_Defining_Operator_Symbol then
-         Check_Intrinsic_Operator (E, N);
+--        elsif Nkind (E) = N_Defining_Operator_Symbol then
+--           Check_Intrinsic_Operator (E, N);
 
       elsif Nam = Name_File
         or else Nam = Name_Line

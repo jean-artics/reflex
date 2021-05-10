@@ -38,6 +38,10 @@ package Rxada.Gen.Ch3 is
      (This : access Ada_Generator_Record;
       Node : Node_Id);
    
+   procedure Generate_Reactive_Type_Definition
+     (This : access Ada_Generator_Record;
+      Node : Node_Id);
+   
    --  procedure Generate_Access_Function_Definition
    --   (This : access Ada_Generator_Record;
    --    Node : Node_Id);

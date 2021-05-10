@@ -84,7 +84,19 @@ package body Ch7 is
       Specification_Node : Node_Id;
       Name_Node          : Node_Id;
       Package_Sloc       : Source_Ptr;
+      
+      Aspect_Sloc : Source_Ptr := No_Location;
+      --  Save location of WITH for scanned aspects. Left set to No_Location
+      --  if no aspects scanned before the IS keyword.
+      
+      Is_Sloc : Source_Ptr;
+      --  Save location of IS token for package declaration
 
+      Dummy_Node : constant Node_Id :=
+                     New_Node (N_Package_Specification, Token_Ptr);
+      --  Dummy node to attach aspect specifications to until we properly
+      --  figure out where they eventually belong.
+      
    begin
       Push_Scope_Stack;
       Scope.Table (Scope.Last).Etyp := E_Name;
@@ -110,12 +122,25 @@ package body Ch7 is
          T_Body;
          Name_Node := P_Defining_Program_Unit_Name;
          Scope.Table (Scope.Last).Labl := Name_Node;
+	 
+         if Aspect_Specifications_Present then
+            Aspect_Sloc := Token_Ptr;
+            P_Aspect_Specifications (Dummy_Node, Semicolon => False);
+         end if;
+
          TF_Is;
 
          Package_Node := New_Node (N_Package_Body, Package_Sloc);
          Set_Defining_Unit_Name (Package_Node, Name_Node);
-         Parse_Decls_Begin_End (Package_Node);
+	 
+	 --  Move the aspect specifications to the body node
+	 
+	 if Has_Aspects (Dummy_Node) then
+	    Move_Aspects (From => Dummy_Node, To => Package_Node);
+	 end if;
 
+         Parse_Decls_Begin_End (Package_Node);
+	 
          return Package_Node;
 
       --  Cases other than Package_Body
@@ -141,11 +166,18 @@ package body Ch7 is
             Set_Name (Package_Node, P_Qualified_Simple_Name);
 
             No_Constraint;
+            P_Aspect_Specifications (Package_Node, Semicolon => False);
             TF_Semicolon;
             Pop_Scope_Stack;
             return Package_Node;
 
          else
+            if Aspect_Specifications_Present then
+               Aspect_Sloc := Token_Ptr;
+               P_Aspect_Specifications (Dummy_Node, Semicolon => False);
+            end if;
+
+            Is_Sloc := Token_Ptr;
             TF_Is;
 
             --  Case of generic instantiation
@@ -156,6 +188,12 @@ package body Ch7 is
                      ("generic instantiation cannot appear here!");
                end if;
 
+               if Aspect_Sloc /= No_Location then
+                  Error_Msg
+                    ("misplaced aspects for package instantiation",
+                     Aspect_Sloc);
+               end if;
+
                Scan; -- past NEW
 
                Package_Node :=
@@ -164,8 +202,18 @@ package body Ch7 is
                Set_Name (Package_Node, P_Qualified_Simple_Name);
                Set_Generic_Associations
                  (Package_Node, P_Generic_Actual_Part_Opt);
-               TF_Semicolon;
-               Pop_Scope_Stack;
+	       
+               if Aspect_Sloc /= No_Location
+                 and then not Aspect_Specifications_Present
+               then
+                  Error_Msg_SC ("info: aspect specifications belong here??");
+                  Move_Aspects (From => Dummy_Node, To => Package_Node);
+               end if;
+
+               P_Aspect_Specifications (Package_Node);
+               --  TF_Semicolon;
+	       
+	       Pop_Scope_Stack;
 
             --  Case of package declaration or package specification
 
@@ -179,15 +227,6 @@ package body Ch7 is
 
                if Token = Tok_Private then
                   Error_Msg_Col := Scope.Table (Scope.Last).Ecol;
-
-                  if Style.RM_Column_Check then
-                     if Token_Is_At_Start_Of_Line
-                       and then Start_Column /= Error_Msg_Col
-                     then
-                        Error_Msg_SC
-                          ("(style) PRIVATE in wrong column, should be@");
-                     end if;
-                  end if;
 
                   Scan; -- past PRIVATE
                   Set_Private_Declarations
@@ -219,6 +258,7 @@ package body Ch7 is
                end if;
 
                End_Statements (Specification_Node);
+               Move_Aspects (From => Dummy_Node, To => Package_Node);
             end if;
 
             return Package_Node;

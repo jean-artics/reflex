@@ -79,7 +79,7 @@ package body Sem_Mech is
             return;
 
          elsif Chars (Mech_Name) = Name_Descriptor then
-            Check_VMS (Mech_Name);
+            --Check_VMS (Mech_Name);
             Set_Mechanism_With_Checks (Ent, By_Descriptor, Mech_Name);
             return;
 
@@ -137,7 +137,7 @@ package body Sem_Mech is
 
       --  Fall through here with Class set to descriptor class name
 
-      Check_VMS (Mech_Name);
+      --Check_VMS (Mech_Name);
 
       if Nkind (Class) /= N_Identifier then
          Bad_Class;
@@ -270,7 +270,6 @@ package body Sem_Mech is
 
                when Convention_Assembler |
                     Convention_C         |
-                    Convention_CPP       |
                     Convention_Stdcall   =>
 
                   --  The following values are passed by copy

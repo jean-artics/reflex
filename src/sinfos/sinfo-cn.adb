@@ -77,14 +77,14 @@ package body Sinfo.CN is
    -- Change_Operator_Symbol_To_Defining_Operator_Symbol --
    --------------------------------------------------------
 
-   procedure Change_Operator_Symbol_To_Defining_Operator_Symbol
-     (N : in out Node_Id)
-   is
-   begin
-      Set_Nkind (N, N_Defining_Operator_Symbol);
-      Set_Node2 (N, Empty); -- Clear unused Str2 field
-      N := Extend_Node (N);
-   end Change_Operator_Symbol_To_Defining_Operator_Symbol;
+--     procedure Change_Operator_Symbol_To_Defining_Operator_Symbol
+--       (N : in out Node_Id)
+--     is
+--     begin
+--        Set_Nkind (N, N_Defining_Operator_Symbol);
+--        Set_Node2 (N, Empty); -- Clear unused Str2 field
+--        N := Extend_Node (N);
+--     end Change_Operator_Symbol_To_Defining_Operator_Symbol;
 
    ----------------------------------------------
    -- Change_Operator_Symbol_To_String_Literal --

@@ -240,10 +240,6 @@ package body Ch2 is
       Scan; -- past PRAGMA
       Pragma_Name := Token_Name;
 
-      if Style_Check then
-         Style.Check_Pragma_Name;
-      end if;
-
       Ident_Node := P_Identifier;
       Set_Chars (Pragma_Node, Pragma_Name);
       Delete_Node (Ident_Node);

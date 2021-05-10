@@ -1,29 +1,31 @@
 ------------------------------------------------------------------------------
 --                                                                          --
---                         REFLEX COMPILER COMPONENTS                       --
+--                         GNAT COMPILER COMPONENTS                         --
 --                                                                          --
---          Copyright (C) 1992-2020, Free Software Foundation, Inc.         --
+--                                N M A K E                                 --
 --                                                                          --
--- Reflex is free software; you can redistribute it  and/or modify it under --
+--                                 S p e c                                  --
+--                                                                          --
+--          Copyright (C) 1992-2007, Free Software Foundation, Inc.         --
+--                                                                          --
+-- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
--- ware Foundation; either version 3, or (at your option) any later version --
--- Reflex is distributed in the hope that it will be useful, but WITH-      --
+-- ware  Foundation;  either version 3,  or (at your option) any later ver- --
+-- sion.  GNAT is distributed in the hope that it will be useful, but WITH- --
 -- OUT ANY WARRANTY;  without even the  implied warranty of MERCHANTABILITY --
 -- or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License --
 -- for  more details.  You should have  received  a copy of the GNU General --
--- Public License distributed with Reflex; see file COPYING3. If not, go to --
+-- Public License  distributed with GNAT; see file COPYING3.  If not, go to --
 -- http://www.gnu.org/licenses for a complete copy of the license.          --
 --                                                                          --
--- Reflex is a fork from the GNAT compiler. GNAT was originally developed   --
--- by the GNAT team at  New York University. Extensive  contributions to    --
--- GNAT were provided by Ada Core Technologies Inc. Reflex is developed  by --
--- the Artics team at Grenoble.                                             --
+-- GNAT was originally developed  by the GNAT team at  New York University. --
+-- Extensive contributions were provided by Ada Core Technologies Inc.      --
 --                                                                          --
 ------------------------------------------------------------------------------
 
+with Namet;  use Namet;
 with Nlists; use Nlists;
 with Types;  use Types;
-with Namet; use Namet;
 with Uintp;  use Uintp;
 with Urealp; use Urealp;
 
@@ -165,6 +167,14 @@ package Nmake is
       return Node_Id;
    pragma Inline (Make_Range);
 
+   function Make_Aspect_Specification (Sloc : Source_Ptr;
+      Identifier                   : Node_Id;
+      Expression                   : Node_Id := Empty;
+      Class_Present                : Boolean := False;
+      Split_PPC                    : Boolean := False)
+      return Node_Id;
+   pragma Inline (Make_Aspect_Specification);
+
    function Make_Enumeration_Type_Definition (Sloc : Source_Ptr;
       Literals                     : List_Id;
       End_Label                    : Node_Id := Empty)
@@ -219,7 +229,7 @@ package Nmake is
 
    function Make_Component_Definition (Sloc : Source_Ptr;
       Aliased_Present              : Boolean := False;
-      Subtype_Indication           : Node_Id := Empty;
+      Subtype_Indication           : Node_Id;
       Access_Definition            : Node_Id := Empty)
       return Node_Id;
    pragma Inline (Make_Component_Definition);
@@ -264,28 +274,24 @@ package Nmake is
    function Make_Access_To_Object_Definition (Sloc : Source_Ptr;
       All_Present                  : Boolean := False;
       Subtype_Indication           : Node_Id;
-      Constant_Present             : Boolean := False)
+      Constant_Present             : Boolean := False;
+      Access_To_Subprogram_Definition : Node_Id := Empty)
       return Node_Id;
    pragma Inline (Make_Access_To_Object_Definition);
 
    function Make_Access_Function_Definition (Sloc : Source_Ptr;
-      Protected_Present            : Boolean := False;
       Parameter_Specifications     : List_Id := No_List;
       Subtype_Mark                 : Node_Id)
       return Node_Id;
    pragma Inline (Make_Access_Function_Definition);
 
    function Make_Access_Procedure_Definition (Sloc : Source_Ptr;
-      Protected_Present            : Boolean := False;
       Parameter_Specifications     : List_Id := No_List)
       return Node_Id;
    pragma Inline (Make_Access_Procedure_Definition);
 
    function Make_Access_Definition (Sloc : Source_Ptr;
-      All_Present                  : Boolean := False;
-      Constant_Present             : Boolean := False;
-      Subtype_Mark                 : Node_Id;
-      Access_To_Subprogram_Definition : Node_Id := Empty)
+      Subtype_Mark                 : Node_Id)
       return Node_Id;
    pragma Inline (Make_Access_Definition);
 
@@ -584,9 +590,7 @@ package Nmake is
       Identifier                   : Node_Id := Empty;
       Declarations                 : List_Id := No_List;
       Handled_Statement_Sequence   : Node_Id;
-      Has_Created_Identifier       : Boolean := False;
-      Is_Task_Allocation_Block     : Boolean := False;
-      Is_Asynchronous_Call_Block   : Boolean := False)
+      Has_Created_Identifier       : Boolean := False)
       return Node_Id;
    pragma Inline (Make_Block_Statement);
 
@@ -635,17 +639,6 @@ package Nmake is
       Defining_Identifier          : Node_Id)
       return Node_Id;
    pragma Inline (Make_Defining_Program_Unit_Name);
-
-   function Make_Operator_Symbol (Sloc : Source_Ptr;
-      Chars                        : Name_Id;
-      Strval                       : String_Id)
-      return Node_Id;
-   pragma Inline (Make_Operator_Symbol);
-
-   function Make_Defining_Operator_Symbol (Sloc : Source_Ptr;
-      Chars                        : Name_Id)
-      return Node_Id;
-   pragma Inline (Make_Defining_Operator_Symbol);
 
    function Make_Parameter_Specification (Sloc : Source_Ptr;
       Defining_Identifier          : Node_Id;
@@ -738,12 +731,6 @@ package Nmake is
       return Node_Id;
    pragma Inline (Make_Object_Renaming_Declaration);
 
-   function Make_Exception_Renaming_Declaration (Sloc : Source_Ptr;
-      Defining_Identifier          : Node_Id;
-      Name                         : Node_Id)
-      return Node_Id;
-   pragma Inline (Make_Exception_Renaming_Declaration);
-
    function Make_Package_Renaming_Declaration (Sloc : Source_Ptr;
       Defining_Unit_Name           : Node_Id;
       Name                         : Node_Id)
@@ -803,30 +790,12 @@ package Nmake is
       return Node_Id;
    pragma Inline (Make_With_Type_Clause);
 
-   function Make_Exception_Declaration (Sloc : Source_Ptr;
-      Defining_Identifier          : Node_Id)
-      return Node_Id;
-   pragma Inline (Make_Exception_Declaration);
-
    function Make_Handled_Sequence_Of_Statements (Sloc : Source_Ptr;
       Statements                   : List_Id;
       End_Label                    : Node_Id := Empty;
-      Exception_Handlers           : List_Id := No_List;
       At_End_Proc                  : Node_Id := Empty)
       return Node_Id;
    pragma Inline (Make_Handled_Sequence_Of_Statements);
-
-   function Make_Exception_Handler (Sloc : Source_Ptr;
-      Choice_Parameter             : Node_Id := Empty;
-      Exception_Choices            : List_Id;
-      Statements                   : List_Id)
-      return Node_Id;
-   pragma Inline (Make_Exception_Handler);
-
-   function Make_Raise_Statement (Sloc : Source_Ptr;
-      Name                         : Node_Id := Empty)
-      return Node_Id;
-   pragma Inline (Make_Raise_Statement);
 
    function Make_Generic_Subprogram_Declaration (Sloc : Source_Ptr;
       Specification                : Node_Id;
@@ -1001,6 +970,58 @@ package Nmake is
       return Node_Id;
    pragma Inline (Make_Mod_Clause);
 
+   function Make_Reactive_State (Sloc : Source_Ptr;
+      Defining_Identifier          : Node_Id;
+      Corresponding_Node           : Node_Id)
+      return Node_Id;
+   pragma Inline (Make_Reactive_State);
+
+   function Make_Reactive_Wait_Statement (Sloc : Source_Ptr;
+      State_Identifier             : Node_Id;
+      Condition                    : Node_Id)
+      return Node_Id;
+   pragma Inline (Make_Reactive_Wait_Statement);
+
+   function Make_Reactive_Pause_Statement (Sloc : Source_Ptr;
+      State_Identifier             : Node_Id)
+      return Node_Id;
+   pragma Inline (Make_Reactive_Pause_Statement);
+
+   function Make_Reactive_Fork_Statement (Sloc : Source_Ptr;
+      Condition                    : Node_Id;
+      Alternatives                 : List_Id := No_List)
+      return Node_Id;
+   pragma Inline (Make_Reactive_Fork_Statement);
+
+   function Make_Reactive_Fork_Alternative (Sloc : Source_Ptr;
+      Statements                   : List_Id)
+      return Node_Id;
+   pragma Inline (Make_Reactive_Fork_Alternative);
+
+   function Make_Reactive_Select_Statement (Sloc : Source_Ptr;
+      State_Identifier             : Node_Id;
+      Alternatives                 : List_Id := No_List)
+      return Node_Id;
+   pragma Inline (Make_Reactive_Select_Statement);
+
+   function Make_Reactive_Select_Alternative (Sloc : Source_Ptr;
+      Condition                    : Node_Id;
+      Statements                   : List_Id)
+      return Node_Id;
+   pragma Inline (Make_Reactive_Select_Alternative);
+
+   function Make_Reactive_Abort_Statement (Sloc : Source_Ptr;
+      Condition                    : Node_Id;
+      Statements                   : List_Id;
+      Abort_Handler                : Node_Id := Empty)
+      return Node_Id;
+   pragma Inline (Make_Reactive_Abort_Statement);
+
+   function Make_Reactive_Abort_Handler (Sloc : Source_Ptr;
+      Statements                   : List_Id)
+      return Node_Id;
+   pragma Inline (Make_Reactive_Abort_Handler);
+
    function Make_Conditional_Expression (Sloc : Source_Ptr;
       Expressions                  : List_Id)
       return Node_Id;
@@ -1027,24 +1048,6 @@ package Nmake is
       Defining_Identifier          : Node_Id)
       return Node_Id;
    pragma Inline (Make_Implicit_Label_Declaration);
-
-   function Make_Raise_Constraint_Error (Sloc : Source_Ptr;
-      Condition                    : Node_Id := Empty;
-      Reason                       : Uint)
-      return Node_Id;
-   pragma Inline (Make_Raise_Constraint_Error);
-
-   function Make_Raise_Program_Error (Sloc : Source_Ptr;
-      Condition                    : Node_Id := Empty;
-      Reason                       : Uint)
-      return Node_Id;
-   pragma Inline (Make_Raise_Program_Error);
-
-   function Make_Raise_Storage_Error (Sloc : Source_Ptr;
-      Condition                    : Node_Id := Empty;
-      Reason                       : Uint)
-      return Node_Id;
-   pragma Inline (Make_Raise_Storage_Error);
 
    function Make_Reference (Sloc : Source_Ptr;
       Prefix                       : Node_Id)

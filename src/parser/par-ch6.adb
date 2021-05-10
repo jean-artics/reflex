@@ -21,6 +21,8 @@
 --                                                                          --
 ------------------------------------------------------------------------------
 
+with Ada.Text_Io; use Ada.Text_Io;
+
 with Sinfo.CN; use Sinfo.CN;
 
 separate (Par)
@@ -29,7 +31,6 @@ package body Ch6 is
    --  Local subprograms, used only in this chapter
 
    function P_Defining_Designator        return Node_Id;
-   function P_Defining_Operator_Symbol   return Node_Id;
 
    procedure Check_Junk_Semicolon_Before_Return;
    --  Check for common error of junk semicolon before RETURN keyword of
@@ -123,6 +124,7 @@ package body Ch6 is
    function P_Subprogram (Pf_Flags : Pf_Rec) return Node_Id is
       Specification_Node : Node_Id;
       Name_Node   : Node_Id;
+      Aspects     : List_Id;
       Fpart_List  : List_Id;
       Fpart_Sloc  : Source_Ptr;
       Return_Node : Node_Id;
@@ -133,6 +135,8 @@ package body Ch6 is
       Absdec_Node : Node_Id;
       Fproc_Sloc  : Source_Ptr;
       Func        : Boolean;
+      React       : Boolean;
+      Flow        : Boolean;
       Scan_State  : Saved_Scan_State;
 
    begin
@@ -145,7 +149,15 @@ package body Ch6 is
       Scope.Table (Scope.Last).Etyp := E_Name;
       Scope.Table (Scope.Last).Ecol := Start_Column;
       Scope.Table (Scope.Last).Lreq := False;
-
+      
+      Aspects := Empty_List;
+      
+      React := (Token = Tok_Reactive);
+      Flow  := (Token = Tok_Flow);
+      if React or Flow then
+         Scan; -- past REACT or FLOW
+      end if;
+      
       Func := (Token = Tok_Function);
       Fproc_Sloc := Token_Ptr;
       Scan; -- past FUNCTION or PROCEDURE
@@ -153,30 +165,11 @@ package body Ch6 is
       Ignore (Tok_Body);
 
       if Func then
-         Name_Node := P_Defining_Designator;
-
-         if Nkind (Name_Node) = N_Defining_Operator_Symbol
-           and then Scope.Last = 1
-         then
-            Error_Msg_SP ("operator symbol not allowed at library level");
-            Name_Node := New_Entity (N_Defining_Identifier, Sloc (Name_Node));
-
-            --  Set name from file name, we need some junk name, and that's
-            --  as good as anything. This is only approximate, since we do
-            --  not do anything with non-standard name translations.
-
-            Get_Name_String (File_Name (Current_Source_File));
-
-            for J in 1 .. Name_Len loop
-               if Name_Buffer (J) = '.' then
-                  Name_Len := J - 1;
-                  exit;
-               end if;
-            end loop;
-
-            Set_Chars (Name_Node, Name_Find);
-            Set_Error_Posted (Name_Node);
+         if React then
+            Error_Msg_SP ("function cannot be reactive");
          end if;
+	 
+         Name_Node := P_Defining_Designator;
 
       else
          Name_Node := P_Defining_Program_Unit_Name;
@@ -213,7 +206,8 @@ package body Ch6 is
 
             Set_Defining_Unit_Name (Inst_Node, Name_Node);
             Set_Generic_Associations (Inst_Node, P_Generic_Actual_Part_Opt);
-            TF_Semicolon;
+            P_Aspect_Specifications (Inst_Node);
+            --??JMA??  TF_Semicolon;
             Pop_Scope_Stack; -- Don't need scope stack entry in this case
             return Inst_Node;
 
@@ -237,8 +231,8 @@ package body Ch6 is
       if Token = Tok_Identifier
         and then not Token_Is_At_Start_Of_Line
       then
-            T_Left_Paren; -- to generate message
-            Fpart_List := P_Formal_Part;
+	 T_Left_Paren; -- to generate message
+	 Fpart_List := P_Formal_Part;
 
       --  Otherwise scan out an optional formal part in the usual manner
 
@@ -283,22 +277,31 @@ package body Ch6 is
       Set_Defining_Unit_Name (Specification_Node, Name_Node);
       Set_Parameter_Specifications (Specification_Node, Fpart_List);
 
-      --  Error check: barriers not allowed on protected functions/procedures
-
-      if Token = Tok_When then
-         if Func then
-            Error_Msg_SC ("barrier not allowed on function, only on entry");
-         else
-            Error_Msg_SC ("barrier not allowed on procedure, only on entry");
-         end if;
-
-         Scan; -- past WHEN
-         Discard_Junk_Node (P_Expression);
-      end if;
-
       --  Deal with case of semicolon ending a subprogram declaration
 
+      --  Deal with semicolon followed by IS. We want to treat this as IS
+
       if Token = Tok_Semicolon then
+         Save_Scan_State (Scan_State);
+         Scan; -- past semicolon
+
+         if Token = Tok_Is then
+            Error_Msg_SP -- CODEFIX
+              ("extra "";"" ignored");
+         else
+            Restore_Scan_State (Scan_State);
+         end if;
+      end if;
+      
+      --  Subprogram declaration ended by aspect specifications
+
+      if Aspect_Specifications_Present then
+         goto Subprogram_Declaration;
+
+      
+      --  Deal with case of semicolon ending a subprogram declaration
+
+      elsif Token = Tok_Semicolon then
          if not Pf_Flags.Decl then
             T_Is;
          end if;
@@ -345,6 +348,7 @@ package body Ch6 is
             Scan; -- past RENAMES
             Set_Name (Rename_Node, P_Name);
             Set_Specification (Rename_Node, Specification_Node);
+            P_Aspect_Specifications (Rename_Node);
             TF_Semicolon;
             Pop_Scope_Stack;
             return Rename_Node;
@@ -353,10 +357,6 @@ package body Ch6 is
 
          elsif Token = Tok_Is then
             T_Is; -- ignore redundant Is's
-
-            if Token_Name = Name_Abstract then
-               Check_95_Keyword (Tok_Abstract, Tok_Semicolon);
-            end if;
 
             --  Deal nicely with (now obsolete) use of <> in place of abstract
 
@@ -373,8 +373,22 @@ package body Ch6 is
                Set_Specification (Absdec_Node, Specification_Node);
                Pop_Scope_Stack; -- discard unneeded entry
                Scan; -- past ABSTRACT
-               TF_Semicolon;
+               P_Aspect_Specifications (Absdec_Node);
+               --  TF_Semicolon;
                return Absdec_Node;
+
+            --  Ada 2005 (AI-248): Parse a null procedure declaration
+
+            elsif Token = Tok_Null then
+               Scan; -- past NULL
+
+               if Func then
+                  Error_Msg_SP ("only procedures can be null");
+               else
+                  Set_Null_Present (Specification_Node);
+               end if;
+
+               goto Subprogram_Declaration;
 
             --  Check for IS NEW with Formal_Part present and handle nicely
 
@@ -397,6 +411,11 @@ package body Ch6 is
                Pop_Scope_Stack; -- Don't need scope stack entry in this case
                return Inst_Node;
 
+         --  Aspect specifications present
+
+	    elsif Aspect_Specifications_Present then
+	       goto Subprogram_Declaration;
+	       
             else
                goto Subprogram_Body;
             end if;
@@ -446,13 +465,30 @@ package body Ch6 is
          Decl_Node :=
            New_Node (N_Subprogram_Declaration, Sloc (Specification_Node));
          Set_Specification (Decl_Node, Specification_Node);
-
+	 
+	 Put_Line ("======> Subprogram Aspect " & Token'Img);
+         Aspects := Get_Aspect_Specifications (Semicolon => False);
+	 
+	 if Is_Non_Empty_List (Aspects) then
+	    Set_Parent (Aspects, Decl_Node);
+	    Set_Aspect_Specifications (Decl_Node, Aspects);
+	 end if;
+	 
+	 TF_Semicolon;
+	 
          --  If this is a context in which a subprogram body is permitted,
          --  set active SIS entry in case (see section titled "Handling
          --  Semicolon Used in Place of IS" in body of Parser package)
          --  Note that SIS_Missing_Semicolon_Message is already set properly.
 
-         if Pf_Flags.Pbod then
+         if Pf_Flags.Pbod
+	   
+           --  Disconnnect this processing if we have scanned a null procedure
+           --  because in this case the spec is complete anyway with no body.
+
+           and then (Nkind (Specification_Node) /= N_Procedure_Specification
+		       or else not Null_Present (Specification_Node))
+	 then
             SIS_Labl := Scope.Table (Scope.Last).Labl;
             SIS_Sloc := Scope.Table (Scope.Last).Sloc;
             SIS_Ecol := Scope.Table (Scope.Last).Ecol;
@@ -576,7 +612,6 @@ package body Ch6 is
             Scan; -- past dot
 
             if Token = Tok_Identifier
-              or else Token = Tok_Operator_Symbol
               or else Token = Tok_String_Literal
             then
                return True;
@@ -594,8 +629,7 @@ package body Ch6 is
       Ident_Node := Token_Node;
       Scan; -- past initial token
 
-      if Prev_Token = Tok_Operator_Symbol
-        or else Prev_Token = Tok_String_Literal
+      if Prev_Token = Tok_String_Literal
         or else not Real_Dot
       then
          return Ident_Node;
@@ -648,10 +682,7 @@ package body Ch6 is
 
    function P_Defining_Designator return Node_Id is
    begin
-      if Token = Tok_Operator_Symbol then
-         return P_Defining_Operator_Symbol;
-
-      elsif Token = Tok_String_Literal then
+      if Token = Tok_String_Literal then
          Error_Msg_SC ("invalid operator name");
          Scan; -- past junk string
          return Error;
@@ -745,32 +776,6 @@ package body Ch6 is
 
          return Error;
    end P_Defining_Program_Unit_Name;
-
-   --------------------------
-   -- 6.1  Operator Symbol --
-   --------------------------
-
-   --  OPERATOR_SYMBOL ::= STRING_LITERAL
-
-   --  Operator symbol is returned by the scanner as Tok_Operator_Symbol
-
-   -----------------------------------
-   -- 6.1  Defining Operator Symbol --
-   -----------------------------------
-
-   --  DEFINING_OPERATOR_SYMBOL ::= OPERATOR_SYMBOL
-
-   --  The caller has checked that the initial symbol is an operator symbol
-
-   function P_Defining_Operator_Symbol return Node_Id is
-      Op_Node : Node_Id;
-
-   begin
-      Op_Node := Token_Node;
-      Change_Operator_Symbol_To_Defining_Operator_Symbol (Op_Node);
-      Scan; -- past operator symbol
-      return Op_Node;
-   end P_Defining_Operator_Symbol;
 
    ----------------------------
    -- 6.1  Parameter_Profile --

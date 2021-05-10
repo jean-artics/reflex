@@ -24,16 +24,12 @@
 with Ada.Text_Io; use Ada.Text_Io;
 
 with Atree;    use Atree;
---with Checks;   use Checks;
 with Debug;    use Debug;
 with Einfo;    use Einfo;
 with Elists;   use Elists;
 with Errout;   use Errout;
---with Expander; use Expander;
---with Exp_Ch7;  use Exp_Ch7;
 with Fname;    use Fname;
 with Freeze;   use Freeze;
-with Lib.Xref; use Lib.Xref;
 with Namet;    use Namet;
 with Lib;      use Lib;
 with Nlists;   use Nlists;
@@ -49,8 +45,6 @@ with Sem_Ch5;  use Sem_Ch5;
 with Sem_Ch8;  use Sem_Ch8;
 with Sem_Ch12; use Sem_Ch12;
 with Sem_Disp; use Sem_Disp;
--- with Sem_Dist; use Sem_Dist;
-with Sem_Elim; use Sem_Elim;
 with Sem_Eval; use Sem_Eval;
 with Sem_Mech; use Sem_Mech;
 with Sem_Prag; use Sem_Prag;
@@ -64,8 +58,6 @@ with Sinfo;    use Sinfo;
 with Sinfo.CN; use Sinfo.CN;
 with Snames;   use Snames;
 with Stringt;  use Stringt;
-with Style;
-with Stylesw;  use Stylesw;
 with Tbuild;   use Tbuild;
 with Uintp;    use Uintp;
 with Urealp;   use Urealp;
@@ -123,10 +115,6 @@ package body Sem_Ch6 is
    --  the pragma must follow immediately the declaration, and can be treated
    --  as part of the declaration itself, as described in AI-218.
 
-   procedure Check_Subprogram_Order (N : Node_Id);
-   --  N is the N_Subprogram_Body node for a subprogram. This routine applies
-   --  the alpha ordering rule for N if this ordering requirement applicable.
-
    function Is_Non_Overriding_Operation
      (Prev_E : Entity_Id;
       New_E  : Entity_Id) return Boolean;
@@ -170,7 +158,7 @@ package body Sem_Ch6 is
    --  sufficient: the formals must become the current entities for
    --  their names.
 
-   procedure Make_Inequality_Operator (S : Entity_Id);
+--   procedure Make_Inequality_Operator (S : Entity_Id);
    --  Create the declaration for an inequality operator that is implicitly
    --  created by a user-defined equality operator that yields a boolean.
 
@@ -199,14 +187,11 @@ package body Sem_Ch6 is
       Scop       : constant Entity_Id := Current_Scope;
 
    begin
-      Generate_Definition (Designator);
       Set_Is_Abstract (Designator);
       New_Overloaded_Entity (Designator);
       Check_Delayed_Subprogram (Designator);
 
       Set_Categorization_From_Scope (Designator, Scop);
-
-      Generate_Reference_To_Formals (Designator);
    end Analyze_Abstract_Subprogram_Declaration;
 
    ----------------------------
@@ -379,47 +364,12 @@ package body Sem_Ch6 is
       end;
 
       End_Scope;
-      Check_Subprogram_Order (N);
 
       --  Outside of its body, unit is generic again.
 
       Set_Ekind (Gen_Id, Kind);
-      Generate_Reference (Gen_Id, Body_Id, 'b', Set_Ref => False);
-      Style.Check_Identifier (Body_Id, Gen_Id);
       End_Generic;
    end Analyze_Generic_Subprogram_Body;
-
-   -----------------------------
-   -- Analyze_Operator_Symbol --
-   -----------------------------
-
-   --  An operator symbol such as "+" or "and" may appear in context where
-   --  the literal denotes an entity name, such as  "+"(x, y) or in a
-   --  context when it is just a string, as in  (conjunction = "or"). In
-   --  these cases the parser generates this node, and the semantics does
-   --  the disambiguation. Other such case are actuals in an instantiation,
-   --  the generic unit in an instantiation, and pragma arguments.
-
-   procedure Analyze_Operator_Symbol (N : Node_Id) is
-      Par : constant Node_Id := Parent (N);
-
-   begin
-      if        (Nkind (Par) = N_Function_Call and then N = Name (Par))
-        or else  Nkind (Par) = N_Function_Instantiation
-        or else (Nkind (Par) = N_Indexed_Component and then N = Prefix (Par))
-        or else (Nkind (Par) = N_Pragma_Argument_Association
-                   and then not Is_Pragma_String_Literal (Par))
-        or else  Nkind (Par) = N_Subprogram_Renaming_Declaration
-        or else  (Nkind (Par) = N_Attribute_Reference
-                   and then Attribute_Name (Par) /= Name_Value)
-      then
-         Find_Direct_Name (N);
-
-      else
-         Change_Operator_Symbol_To_String_Literal (N);
-         Analyze (N);
-      end if;
-   end Analyze_Operator_Symbol;
 
    -----------------------------------
    -- Analyze_Parameter_Association --
@@ -596,11 +546,6 @@ package body Sem_Ch6 is
               and then Object_Access_Level (Expr)
                 > Subprogram_Access_Level (Scope_Id)
             then
-               Rewrite (N,
-                 Make_Raise_Program_Error (Loc,
-                   Reason => PE_Accessibility_Check_Failed));
-               Analyze (N);
-
                Error_Msg_N
                  ("cannot return a local value by reference?", N);
                Error_Msg_NE
@@ -779,10 +724,6 @@ package body Sem_Ch6 is
       --  is a spec, the visible entity remains that of the spec.
 
       if Present (Spec_Id) then
-         Generate_Reference (Spec_Id, Body_Id, 'b', Set_Ref => False);
-         if Style_Check then
-            Style.Check_Identifier (Body_Id, Spec_Id);
-         end if;
 
          Set_Is_Compilation_Unit (Body_Id, Is_Compilation_Unit (Spec_Id));
          Set_Is_Child_Unit       (Body_Id, Is_Child_Unit       (Spec_Id));
@@ -856,27 +797,14 @@ package body Sem_Ch6 is
       --  Case of subprogram body with no previous spec
 
       else
-         if Style_Check
-           and then Comes_From_Source (Body_Id)
-           and then not Suppress_Style_Checks (Body_Id)
-           and then not In_Instance
-         then
-            Style.Body_With_No_Spec (N);
-         end if;
-
          New_Overloaded_Entity (Body_Id);
 
 	 Set_Acts_As_Spec (N);
-	 Generate_Definition (Body_Id);
-	 Generate_Reference
-	   (Body_Id, Body_Id, 'b', Set_Ref => False, Force => True);
-	 Generate_Reference_To_Formals (Body_Id);
 	 Install_Formals (Body_Id);
 	 New_Scope (Body_Id);
       end if;
 
       Set_Has_Completion (Body_Id);
-      Check_Eliminated (Body_Id);
 
       if  Present (Spec_Id)
         and then Operating_Mode = Generate_Code
@@ -895,7 +823,6 @@ package body Sem_Ch6 is
       Analyze (HSS);
       Process_End_Label (HSS, 't', Current_Scope);
       End_Scope;
-      Check_Subprogram_Order (N);
 
       --  If we have a separate spec, then the analysis of the declarations
       --  caused the entities in the body to be chained to the spec id, but
@@ -995,14 +922,9 @@ package body Sem_Ch6 is
             Ostm : constant Node_Id := Original_Node (Stm);
 
          begin
-            --  If explicit raise statement, return with no checks
-
-            if Nkind (Ostm) = N_Raise_Statement then
-               return;
-
             --  Check for explicit call cases which likely raise an exception
 
-            elsif Nkind (Ostm) = N_Procedure_Call_Statement then
+            if Nkind (Ostm) = N_Procedure_Call_Statement then
                if Is_Entity_Name (Name (Ostm)) then
                   declare
                      Ent : constant Entity_Id := Entity (Name (Ostm));
@@ -1086,14 +1008,6 @@ package body Sem_Ch6 is
    --  Start of processing for Analyze_Subprogram_Declaration
 
    begin
-      Generate_Definition (Designator);
-
-      --  Check for RCI unit subprogram declarations against in-lined
-      --  subprograms and subprograms having access parameter or limited
-      --  parameter without Read and Write (RM E.2.3(12-13)).
-
-      Validate_RCI_Subprogram_Declaration (N);
-
       Trace_Scope
         (N,
          Defining_Entity (N),
@@ -1110,17 +1024,6 @@ package body Sem_Ch6 is
       New_Overloaded_Entity (Designator);
       Check_Delayed_Subprogram (Designator);
 
-      --  What is the following code for, it used to be
-
-      --  ???   Set_Suppress_Elaboration_Checks
-      --  ???     (Designator, Elaboration_Checks_Suppressed (Designator));
-
-      --  The following seems equivalent, but a bit dubious
-
---        if Elaboration_Checks_Suppressed (Designator) then
---           Set_Kill_Elaboration_Checks (Designator);
---        end if;
-
       if Scop /= Standard_Standard
         and then not Is_Child_Unit (Designator)
       then
@@ -1129,7 +1032,7 @@ package body Sem_Ch6 is
          --  For a compilation unit, check for library-unit pragmas.
 
          New_Scope (Designator);
-         Set_Categorization_From_Pragmas (N);
+         --Set_Categorization_From_Pragmas (N);
          Validate_Categorization_Dependency (N, Designator);
          Pop_Scope;
       end if;
@@ -1140,9 +1043,6 @@ package body Sem_Ch6 is
       if Nkind (Parent (N)) = N_Compilation_Unit then
          Set_Body_Required (Parent (N), True);
       end if;
-
-      Generate_Reference_To_Formals (Designator);
-      Check_Eliminated (Designator);
 
       if Comes_From_Source (N)
         and then Is_List_Member (N)
@@ -1166,8 +1066,6 @@ package body Sem_Ch6 is
       Typ        : Entity_Id;
 
    begin
-      Generate_Definition (Designator);
-
       if Nkind (N) = N_Function_Specification then
          Set_Ekind (Designator, E_Function);
          Set_Mechanism (Designator, Default_Mechanism);
@@ -1331,16 +1229,6 @@ package body Sem_Ch6 is
                  and then Has_Excluded_Declaration (Declarations (S))
                then
                   return True;
-
-               elsif Present (Handled_Statement_Sequence (S))
-                  and then
-                    (Present
-                      (Exception_Handlers (Handled_Statement_Sequence (S)))
-                     or else
-                       Has_Excluded_Statement
-                         (Statements (Handled_Statement_Sequence (S))))
-               then
-                  return True;
                end if;
 
             elsif Nkind (S) = N_Case_Statement then
@@ -1461,20 +1349,6 @@ package body Sem_Ch6 is
         and then Has_Excluded_Declaration (Declarations (N))
       then
          return;
-      end if;
-
-      if Present (Handled_Statement_Sequence (N)) then
-         if Present (Exception_Handlers (Handled_Statement_Sequence (N))) then
-            Cannot_Inline
-              ("cannot inline& (exception handler)?",
-               First (Exception_Handlers (Handled_Statement_Sequence (N))),
-               Subp);
-            return;
-         elsif Has_Excluded_Statement
-             (Statements (Handled_Statement_Sequence (N)))
-         then
-            return;
-         end if;
       end if;
 
       --  We do not inline a subprogram  that is too large, unless it is
@@ -2070,7 +1944,6 @@ package body Sem_Ch6 is
       Mode : Character;
       Err  : out Boolean)
    is
-      Handler : Node_Id;
 
       procedure Check_Statement_Sequence (L : List_Id);
       --  Internal recursive procedure to check a list of statements for proper
@@ -2111,11 +1984,11 @@ package body Sem_Ch6 is
 
          --  Don't count exception junk
 
-           or else
-             ((Nkind (Last_Stm) = N_Goto_Statement
-                 or else Nkind (Last_Stm) = N_Label
-                 or else Nkind (Last_Stm) = N_Object_Declaration)
-               and then Exception_Junk (Last_Stm))
+--             or else
+--               ((Nkind (Last_Stm) = N_Goto_Statement
+--                   or else Nkind (Last_Stm) = N_Label
+--                   or else Nkind (Last_Stm) = N_Object_Declaration)
+--                 and then Exception_Junk (Last_Stm))
          loop
             Prev (Last_Stm);
          end loop;
@@ -2161,7 +2034,6 @@ package body Sem_Ch6 is
 
                begin
                   if Nkind (Arg) = N_Attribute_Reference
-                    and then Attribute_Name (Arg) = Name_Identity
                   then
                      return;
                   end if;
@@ -2283,106 +2155,7 @@ package body Sem_Ch6 is
       Err := False;
       Check_Statement_Sequence (Statements (HSS));
 
-      if Present (Exception_Handlers (HSS)) then
-         Handler := First_Non_Pragma (Exception_Handlers (HSS));
-         while Present (Handler) loop
-            Check_Statement_Sequence (Statements (Handler));
-            Next_Non_Pragma (Handler);
-         end loop;
-      end if;
    end Check_Returns;
-
-   ----------------------------
-   -- Check_Subprogram_Order --
-   ----------------------------
-
-   procedure Check_Subprogram_Order (N : Node_Id) is
-
-      function Subprogram_Name_Greater (S1, S2 : String) return Boolean;
-      --  This is used to check if S1 > S2 in the sense required by this
-      --  test, for example nameab < namec, but name2 < name10.
-
-      function Subprogram_Name_Greater (S1, S2 : String) return Boolean is
-         L1, L2 : Positive;
-         N1, N2 : Natural;
-
-      begin
-         --  Remove trailing numeric parts
-
-         L1 := S1'Last;
-         while S1 (L1) in '0' .. '9' loop
-            L1 := L1 - 1;
-         end loop;
-
-         L2 := S2'Last;
-         while S2 (L2) in '0' .. '9' loop
-            L2 := L2 - 1;
-         end loop;
-
-         --  If non-numeric parts non-equal, that's decisive
-
-         if S1 (S1'First .. L1) < S2 (S2'First .. L2) then
-            return False;
-
-         elsif S1 (S1'First .. L1) > S2 (S2'First .. L2) then
-            return True;
-
-         --  If non-numeric parts equal, compare suffixed numeric parts. Note
-         --  that a missing suffix is treated as numeric zero in this test.
-
-         else
-            N1 := 0;
-            while L1 < S1'Last loop
-               L1 := L1 + 1;
-               N1 := N1 * 10 + Character'Pos (S1 (L1)) - Character'Pos ('0');
-            end loop;
-
-            N2 := 0;
-            while L2 < S2'Last loop
-               L2 := L2 + 1;
-               N2 := N2 * 10 + Character'Pos (S2 (L2)) - Character'Pos ('0');
-            end loop;
-
-            return N1 > N2;
-         end if;
-      end Subprogram_Name_Greater;
-
-   --  Start of processing for Check_Subprogram_Order
-
-   begin
-      --  Check body in alpha order if this is option
-
-      if Style_Check
-        and then Style_Check_Subprogram_Order
-        and then Nkind (N) = N_Subprogram_Body
-        and then Comes_From_Source (N)
-        and then In_Extended_Main_Source_Unit (N)
-      then
-         declare
-            LSN : String_Ptr
-                    renames Scope_Stack.Table
-                              (Scope_Stack.Last).Last_Subprogram_Name;
-
-            Body_Id : constant Entity_Id :=
-                        Defining_Entity (Specification (N));
-
-         begin
-            Get_Decoded_Name_String (Chars (Body_Id));
-
-            if LSN /= null then
-               if Subprogram_Name_Greater
-                    (LSN.all, Name_Buffer (1 .. Name_Len))
-               then
-                  Style.Subprogram_Not_In_Alpha_Order (Body_Id);
-               end if;
-
-               Free (LSN);
-            end if;
-
-            LSN := new String'(Name_Buffer (1 .. Name_Len));
-         end;
-      end if;
-   end Check_Subprogram_Order;
 
    ------------------------------
    -- Check_Subtype_Conformant --
@@ -3154,9 +2927,9 @@ package body Sem_Ch6 is
             when N_Null =>
                return True;
 
-            when N_Operator_Symbol =>
-               return
-                 Chars (E1) = Chars (E2);
+--              when N_Operator_Symbol =>
+--                 return
+--                   Chars (E1) = Chars (E2);
 
             when N_Others_Choice =>
                return True;
@@ -3547,68 +3320,68 @@ package body Sem_Ch6 is
    --  intrinsic, because it is always expanded as the negation of the
    --  call to the equality function.
 
-   procedure Make_Inequality_Operator (S : Entity_Id) is
-      Loc     : constant Source_Ptr := Sloc (S);
-      Decl    : Node_Id;
-      Formals : List_Id;
-      Op_Name : Entity_Id;
-
-      A : Entity_Id;
-      B : Entity_Id;
-
-   begin
-      --  Check that equality was properly defined.
-
-      if  No (Next_Formal (First_Formal (S))) then
-         return;
-      end if;
-
-      A := Make_Defining_Identifier (Loc, Chars (First_Formal (S)));
-      B := Make_Defining_Identifier (Loc,
-             Chars (Next_Formal (First_Formal (S))));
-
-      Op_Name := Make_Defining_Operator_Symbol (Loc, Name_Op_Ne);
-
-      Formals := New_List (
-        Make_Parameter_Specification (Loc,
-          Defining_Identifier => A,
-          Parameter_Type =>
-            New_Reference_To (Etype (First_Formal (S)), Loc)),
-
-        Make_Parameter_Specification (Loc,
-          Defining_Identifier => B,
-          Parameter_Type =>
-            New_Reference_To (Etype (Next_Formal (First_Formal (S))), Loc)));
-
-      Decl :=
-        Make_Subprogram_Declaration (Loc,
-          Specification =>
-            Make_Function_Specification (Loc,
-              Defining_Unit_Name => Op_Name,
-              Parameter_Specifications => Formals,
-              Subtype_Mark => New_Reference_To (Standard_Boolean, Loc)));
-
-      --  Insert inequality right after equality if it is explicit or after
-      --  the derived type when implicit. These entities are created only
-      --  for visibility purposes, and eventually replaced in the course of
-      --  expansion, so they do not need to be attached to the tree and seen
-      --  by the back-end. Keeping them internal also avoids spurious freezing
-      --  problems. The parent field is set simply to make analysis safe.
-
-      if No (Alias (S)) then
-         Set_Parent (Decl, Parent (Unit_Declaration_Node (S)));
-      else
-         Set_Parent (Decl, Parent (Parent (Etype (First_Formal (S)))));
-      end if;
-
-      Mark_Rewrite_Insertion (Decl);
-      Set_Is_Intrinsic_Subprogram (Op_Name);
-      Analyze (Decl);
-      Set_Has_Completion (Op_Name);
-      Set_Corresponding_Equality (Op_Name, S);
-      Set_Is_Abstract (Op_Name, Is_Abstract (S));
-
-   end Make_Inequality_Operator;
+--     procedure Make_Inequality_Operator (S : Entity_Id) is
+--        Loc     : constant Source_Ptr := Sloc (S);
+--        Decl    : Node_Id;
+--        Formals : List_Id;
+--        Op_Name : Entity_Id;
+--  
+--        A : Entity_Id;
+--        B : Entity_Id;
+--  
+--     begin
+--        --  Check that equality was properly defined.
+--  
+--        if  No (Next_Formal (First_Formal (S))) then
+--           return;
+--        end if;
+--  
+--        A := Make_Defining_Identifier (Loc, Chars (First_Formal (S)));
+--        B := Make_Defining_Identifier (Loc,
+--               Chars (Next_Formal (First_Formal (S))));
+--  
+--        Op_Name := Make_Defining_Operator_Symbol (Loc, Name_Op_Ne);
+--  
+--        Formals := New_List (
+--          Make_Parameter_Specification (Loc,
+--            Defining_Identifier => A,
+--            Parameter_Type =>
+--              New_Reference_To (Etype (First_Formal (S)), Loc)),
+--  
+--          Make_Parameter_Specification (Loc,
+--            Defining_Identifier => B,
+--            Parameter_Type =>
+--              New_Reference_To (Etype (Next_Formal (First_Formal (S))), Loc)));
+--  
+--        Decl :=
+--          Make_Subprogram_Declaration (Loc,
+--            Specification =>
+--              Make_Function_Specification (Loc,
+--                Defining_Unit_Name => Op_Name,
+--                Parameter_Specifications => Formals,
+--                Subtype_Mark => New_Reference_To (Standard_Boolean, Loc)));
+--  
+--        --  Insert inequality right after equality if it is explicit or after
+--        --  the derived type when implicit. These entities are created only
+--        --  for visibility purposes, and eventually replaced in the course of
+--        --  expansion, so they do not need to be attached to the tree and seen
+--        --  by the back-end. Keeping them internal also avoids spurious freezing
+--        --  problems. The parent field is set simply to make analysis safe.
+--  
+--        if No (Alias (S)) then
+--           Set_Parent (Decl, Parent (Unit_Declaration_Node (S)));
+--        else
+--           Set_Parent (Decl, Parent (Parent (Etype (First_Formal (S)))));
+--        end if;
+--  
+--        Mark_Rewrite_Insertion (Decl);
+--        Set_Is_Intrinsic_Subprogram (Op_Name);
+--        Analyze (Decl);
+--        Set_Has_Completion (Op_Name);
+--        Set_Corresponding_Equality (Op_Name, S);
+--        Set_Is_Abstract (Op_Name, Is_Abstract (S));
+--  
+--     end Make_Inequality_Operator;
 
    ----------------------
    -- May_Need_Actuals --
@@ -4190,13 +3963,13 @@ package body Sem_Ch6 is
       --  operation.
 
       <<Check_Inequality>>
-         if Chars (S) = Name_Op_Eq
-           and then Etype (S) = Standard_Boolean
-           and then Present (Parent (S))
-           and then not Is_Dispatching_Operation (S)
-         then
-            Make_Inequality_Operator (S);
-         end if;
+--           if Chars (S) = Name_Op_Eq
+--             and then Etype (S) = Standard_Boolean
+--             and then Present (Parent (S))
+--             and then not Is_Dispatching_Operation (S)
+--           then
+--              Make_Inequality_Operator (S);
+--           end if;
    end New_Overloaded_Entity;
 
    ---------------------
@@ -4374,12 +4147,6 @@ package body Sem_Ch6 is
       Fb := First_Formal (Bod);
 
       while Present (Fs) loop
-         Generate_Reference (Fs, Fb, 'b');
-
-         if Style_Check then
-            Style.Check_Identifier (Fb, Fs);
-         end if;
-
          Set_Spec_Entity (Fb, Fs);
          Set_Referenced (Fs, False);
          Next_Formal (Fs);

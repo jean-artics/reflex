@@ -42,8 +42,8 @@ package Sinfo.CN is
      (N : in out Node_Id);
    --  Similar processing for a character literal
 
-   procedure Change_Operator_Symbol_To_Defining_Operator_Symbol
-     (N : in out Node_Id);
+--     procedure Change_Operator_Symbol_To_Defining_Operator_Symbol
+--       (N : in out Node_Id);
    --  Similar processing for an operator symbol
 
    procedure Change_Conversion_To_Unchecked (N : Node_Id);

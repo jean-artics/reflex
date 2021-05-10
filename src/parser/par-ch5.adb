@@ -74,6 +74,18 @@ package body Ch5 is
    procedure Then_Scan;
    --  Scan past THEN token, testing for illegal junk after it
 
+   function P_Pause_Statement (State : Node_Id := Empty) return Node_Id;
+
+   function P_Wait_Statement (State : Node_Id := Empty) return Node_Id;
+
+   function P_Select_Statement (State : Node_Id := Empty) return Node_Id;
+
+   function P_Fork_Statement (State : Node_Id := Empty) return Node_Id;
+
+   function P_Reactive_Abort_Statement(State : Node_Id := Empty) return Node_Id;
+
+   function P_With_Activity_Statement return Node_Id;
+
    ---------------------------------
    -- 5.1  Sequence of Statements --
    ---------------------------------
@@ -145,6 +157,10 @@ package body Ch5 is
       --  statements are scanned (a statement turns it off, and a label turns
       --  it back on again since a statement must follow a label).
 
+      Reactive_Statement_Allowed : Boolean;
+      --  Flag to indicate that we are in the raction section of a reactive
+      --  procedure.
+
       Declaration_Found : Boolean := False;
       --  This flag is set True if a declaration is encountered, so that the
       --  error message about declarations in the statement part is only
@@ -190,11 +206,302 @@ package body Ch5 is
          end if;
       end Test_Statement_Required;
 
+      ----------------------------------
+      -- State_Declaration_Identifier --
+      ----------------------------------
+
+      procedure State_Declaration_Identifier is
+      begin
+         if not Reactive_Statement_Allowed then
+            --   if Scope.Table (Scope.Last).Actions_Section then
+            --      Error_Msg_AP
+            --    ("state declaration is not allowed in actions section");
+            --   else
+            Error_Msg_AP
+              ("state declaration is not allowed outside" &
+               " reaction section");
+            --   end if;
+         end if;
+
+         --  Wait Statement
+         if Token = Tok_Wait then
+            if Reactive_Statement_Allowed then
+               Append_To
+                 (Statement_List, P_Wait_Statement (Id_Node));
+            else
+               Error_Msg_AP
+                 ("wait statement only allowed in " &
+                  " body reaction part");
+               Discard_Junk_Node (P_Wait_Statement);
+            end if;
+
+         elsif Token = Tok_Select then
+            if Reactive_Statement_Allowed then
+               Append_To
+                 (Statement_List, P_Select_Statement (Id_Node));
+            else
+               Error_Msg_AP
+                 ("wait select statement only allowed" &
+                  "in body reaction part");
+               Discard_Junk_Node (P_Select_Statement);
+            end if;
+
+         elsif Token = Tok_Pause then
+            if Reactive_Statement_Allowed then
+               Append_To
+                 (Statement_List,
+                  P_Pause_Statement (Id_Node));
+            else
+               Error_Msg_AP
+                 ("pause statement only allowed in body reaction part");
+               Discard_Junk_Node (P_Pause_Statement);
+            end if;
+
+         elsif Token = Tok_Identifier then
+            if Reactive_Statement_Allowed then
+               Error_Msg_AP
+                 ("procedure call statement noy allowed in reaction part");
+	    else
+	       Name_Node := P_Name;
+	       Append_To (Statement_List, P_Statement_Name (Name_Node));
+	    end if;
+            TF_Semicolon;
+
+         elsif Token = Tok_Abort then
+            if Reactive_Statement_Allowed then
+               Append_To (Statement_List, P_Reactive_Abort_Statement (Id_Node));
+            else
+               Error_Msg_AP
+                 ("abort statement only allowed in body reaction part");
+               Discard_Junk_Node (P_Reactive_Abort_Statement);
+            end if;
+
+         elsif Token = Tok_Fork then
+            if Reactive_Statement_Allowed then
+               Append_To (Statement_List, P_Fork_Statement (Id_Node));
+            else
+               Error_Msg_AP
+                 ("fork statement only allowed in body reaction part");
+               Discard_Junk_Node (P_Fork_Statement);
+            end if;
+
+         elsif Token = Tok_Loop then
+            Append_To (Statement_List, P_Loop_Statement (Id_Node));
+
+            --  While statement (labeled loop statement with WHILE)
+
+         elsif Token = Tok_While then
+	    Append_To (Statement_List, P_While_Statement (Id_Node));
+
+            --  For statement (labeled loop statement with FOR)
+
+         elsif Token = Tok_For then
+            Append_To (Statement_List, P_For_Statement (Id_Node));
+
+            --  Declare statement
+
+         elsif Token = Tok_Declare then
+            Error_Msg_AP ("declare block is not allowed in reactive ada");
+            Discard_Junk_Node (P_Declare_Statement);
+
+            --  Begin statement (labeled block statement with no
+            --  DECLARE part)
+
+         elsif Token = Tok_Begin then
+            Error_Msg_AP ("begin block is not allowed in reactive ada");
+            Discard_Junk_Node (P_Begin_Statement);
+
+
+         else
+            if Reactive_Statement_Allowed then
+	       Error_Msg_AP ("label declaration not allowed here");
+	    else
+	       Error_Msg_AP ("state declaration not allowed here");
+	    end if;
+         end if;
+
+         Statement_Required := False;
+      end State_Declaration_Identifier;
+
+      -------------------------
+      -- Token_Is_Identifier --
+      -------------------------
+
+      procedure Token_Is_Identifier is
+      begin
+         --  Save scan pointers and line number in case block label
+
+         Id_Node := Token_Node;
+         Block_Label := Token_Name;
+         Save_Scan_State (Scan_State_Label); -- at possible label
+         Scan; -- past Id
+
+         --  Check for common case of assignment, since it occurs
+         --  frequently, and we want to process it efficiently.
+
+         if Token = Tok_Colon_Equal then
+            Scan; -- past the colon-equal
+            Append_To (Statement_List, P_Assignment_Statement (Id_Node));
+            Statement_Required := False;
+
+            --  Check common case of procedure call, another case that
+            --  we want to speed up as much as possible.
+
+         elsif Token = Tok_Semicolon then
+            Append_To (Statement_List, P_Statement_Name (Id_Node));
+            Scan; -- past semicolon
+            Statement_Required := False;
+
+            --  Check common case of = used instead of :=, just so we
+            --  give a better error message for this special misuse.
+
+         elsif Token = Tok_Equal then
+            T_Colon_Equal; -- give := expected message
+            Append_To (Statement_List, P_Assignment_Statement (Id_Node));
+            Statement_Required := False;
+
+
+            --  Check case of loop label or block label
+
+         elsif Token = Tok_Colon
+           or else (Token in Token_Class_Labeled_Stmt
+                    and then not Token_Is_At_Start_Of_Line)
+         --  or else (Token in Token_Class_Reactive_Labeled_Stmt
+         --             and then not Token_Is_At_Start_Of_Line)
+         then
+            T_Colon; -- past colon (if there, or msg for missing one)
+
+            State_Declaration_Identifier;
+
+            --  Here we have an identifier followed by something
+            --  other than a colon, semicolon or assignment symbol.
+            --  The only valid possibility is a name extension symbol
+
+         elsif Token in Token_Class_Namext then
+            Restore_Scan_State (Scan_State_Label); -- to Id
+            Name_Node := P_Name;
+
+            --  Skip junk right parens in this context
+
+            Ignore (Tok_Right_Paren);
+
+            --  Check context following call
+
+            if Token = Tok_Colon_Equal then
+               Scan; -- past colon equal
+               Append_To (Statement_List, P_Assignment_Statement (Name_Node));
+               Statement_Required := False;
+
+               --  Check common case of = used instead of :=
+
+            elsif Token = Tok_Equal then
+               T_Colon_Equal; -- give := expected message
+               Append_To (Statement_List, P_Assignment_Statement (Name_Node));
+               Statement_Required := False;
+
+               --  Check apostrophe cases
+
+            elsif Token = Tok_Apostrophe then
+               Append_To (Statement_List, P_Code_Statement (Name_Node));
+               Statement_Required := False;
+
+               --  The only other valid item after a name is ; which
+               --  means that the item we just scanned was a call.
+
+            elsif Token = Tok_Semicolon then
+               Append_To (Statement_List, P_Statement_Name (Name_Node));
+               Scan; -- past semicolon
+               Statement_Required := False;
+
+               --  A slash following an identifier or a selected
+               --  component in this situation is most likely a period
+               --  (see location of keys on keyboard).
+
+            elsif Token = Tok_Slash
+              and then (Nkind (Name_Node) = N_Identifier
+                        or else
+                          Nkind (Name_Node) = N_Selected_Component)
+            then
+               Error_Msg_SC ("""/"" should be "".""");
+               Statement_Required := False;
+               raise Error_Resync;
+
+               --  Else we have a missing semicolon
+
+            else
+               TF_Semicolon;
+               Statement_Required := False;
+            end if;
+
+            --  If junk after identifier, check if identifier is an
+            --  instance of an incorrectly spelled keyword. If so, we
+            --  do nothing. The Bad_Spelling_Of will have reset Token
+            --  to the appropriate keyword, so the next time round the
+            --  loop we will process the modified token. Note that we
+            --  check for ELSIF before ELSE here. That's not accidental.
+            --  We don't want to identify a misspelling of ELSE as
+            --  ELSIF, and in particular we do not want to treat ELSEIF
+            --  as ELSE IF.
+
+         else
+            Restore_Scan_State (Scan_State_Label); -- to identifier
+
+            if Bad_Spelling_Of (Tok_Abort)
+              or else Bad_Spelling_Of (Tok_And)
+              or else Bad_Spelling_Of (Tok_Case)
+              or else Bad_Spelling_Of (Tok_Declare)
+              or else Bad_Spelling_Of (Tok_Elsif)
+              or else Bad_Spelling_Of (Tok_Else)
+              or else Bad_Spelling_Of (Tok_End)
+              or else Bad_Spelling_Of (Tok_Exit)
+              or else Bad_Spelling_Of (Tok_For)
+              or else Bad_Spelling_Of (Tok_Fork)
+              or else Bad_Spelling_Of (Tok_Goto)
+              or else Bad_Spelling_Of (Tok_If)
+              or else Bad_Spelling_Of (Tok_Loop)
+              or else Bad_Spelling_Of (Tok_Or)
+              or else Bad_Spelling_Of (Tok_Pause)
+              or else Bad_Spelling_Of (Tok_Pragma)
+              or else Bad_Spelling_Of (Tok_Select)
+              or else Bad_Spelling_Of (Tok_Wait)
+              or else Bad_Spelling_Of (Tok_When)
+              or else Bad_Spelling_Of (Tok_While)
+            then
+               null;
+
+               --  If not a bad spelling, then we really have junk
+
+            else
+               Scan; -- past identifier again
+
+               --  If next token is first token on line, then we
+               --  consider that we were missing a semicolon after
+               --  the identifier, and process it as a procedure
+               --  call with no parameters.
+
+               if Token_Is_At_Start_Of_Line then
+                  Append_To (Statement_List, P_Statement_Name (Id_Node));
+                  T_Semicolon; -- to give error message
+                  Statement_Required := False;
+
+                  --  Otherwise we give a missing := message and
+                  --  simply abandon the junk that is there now.
+
+               else
+                  T_Colon_Equal; -- give := expected message
+                  raise Error_Resync;
+               end if;
+
+            end if;
+         end if;
+      end Token_Is_Identifier;
+
    --  Start of processing for P_Sequence_Of_Statements
 
    begin
       Statement_List := New_List;
       Statement_Required := SS_Flags.Sreq;
+      Reactive_Statement_Allowed := Scope.Table (Scope.Last).Reaction_Section;
 
       loop
          while Token = Tok_Semicolon loop
@@ -203,8 +510,6 @@ package body Ch5 is
          end loop;
 
          begin
-            if Style_Check then Style.Check_Indentation; end if;
-
             --  Deal with reserved identifier (in assignment or call)
 
             if Is_Reserved_Identifier then
@@ -222,7 +527,6 @@ package body Ch5 is
                   (Token = Tok_Semicolon
                     and then Prev_Token /= Tok_Return
                     and then Prev_Token /= Tok_Null
-                    and then Prev_Token /= Tok_Raise
                     and then Prev_Token /= Tok_End
                     and then Prev_Token /= Tok_Exit)
 
@@ -303,47 +607,22 @@ package body Ch5 is
 
                when Tok_Else =>
 
-                  --  Terminate if Eltm set or if the else is to the left
-                  --  of the expected column of the end for this sequence
+		  --  Terminate if Eltm set or if the else is to the left
+		  --  of the expected column of the end for this sequence
 
-                  if SS_Flags.Eltm
-                     or else Start_Column < Scope.Table (Scope.Last).Ecol
-                  then
-                     Test_Statement_Required;
-                     exit;
+		  if SS_Flags.Eltm
+		    or else Start_Column < Scope.Table (Scope.Last).Ecol
+		  then
+		     Test_Statement_Required;
+		     exit;
 
-                  --  Otherwise complain and skip past else
+		     --  Otherwise complain and skip past else
 
-                  else
-                     Error_Msg_SC ("ELSE not allowed here");
-                     Scan; -- past ELSE
-                     Statement_Required := False;
-                  end if;
-
-               --  Case of exception
-
-               when Tok_Exception =>
-                  Test_Statement_Required;
-
-                  --  If Extm not set and the exception is not to the left
-                  --  of the expected column of the end for this sequence, then
-                  --  we assume it belongs to the current sequence, even though
-                  --  it is not permitted.
-
-                  if not SS_Flags.Extm and then
-                     Start_Column >= Scope.Table (Scope.Last).Ecol
-
-                  then
-                     Error_Msg_SC ("exception handler not permitted here");
-                     Scan; -- past EXCEPTION
-                     Discard_Junk_List (Parse_Exception_Handlers);
-                  end if;
-
-                  --  Always return, in the case where we scanned out handlers
-                  --  that we did not expect, Parse_Exception_Handlers returned
-                  --  with Token being either end or EOF, so we are OK
-
-                  exit;
+		  else
+		     Error_Msg_SC ("ELSE not allowed here");
+		     Scan; -- past ELSE
+		     Statement_Required := False;
+		  end if;
 
                --  Case of OR
 
@@ -408,395 +687,191 @@ package body Ch5 is
                --  Cases of statements starting with an identifier
 
                when Tok_Identifier =>
-                  Check_Bad_Layout;
-
-                  --  Save scan pointers and line number in case block label
-
-                  Id_Node := Token_Node;
-                  Block_Label := Token_Name;
-                  Save_Scan_State (Scan_State_Label); -- at possible label
-                  Scan; -- past Id
-
-                  --  Check for common case of assignment, since it occurs
-                  --  frequently, and we want to process it efficiently.
-
-                  if Token = Tok_Colon_Equal then
-                     Scan; -- past the colon-equal
-                     Append_To (Statement_List,
-                       P_Assignment_Statement (Id_Node));
-                     Statement_Required := False;
-
-                  --  Check common case of procedure call, another case that
-                  --  we want to speed up as much as possible.
-
-                  elsif Token = Tok_Semicolon then
-                     Append_To (Statement_List,
-                       P_Statement_Name (Id_Node));
-                     Scan; -- past semicolon
-                     Statement_Required := False;
-
-                  --  Check for case of "go to" in place of "goto"
-
-                  elsif Token = Tok_Identifier
-                    and then Block_Label = Name_Go
-                    and then Token_Name = Name_To
-                  then
-                     Error_Msg_SP ("goto is one word");
-                     Append_To (Statement_List, P_Goto_Statement);
-                     Statement_Required := False;
-
-                  --  Check common case of = used instead of :=, just so we
-                  --  give a better error message for this special misuse.
-
-                  elsif Token = Tok_Equal then
-                     T_Colon_Equal; -- give := expected message
-                     Append_To (Statement_List,
-                       P_Assignment_Statement (Id_Node));
-                     Statement_Required := False;
-
-                  --  Check case of loop label or block label
-
-                  elsif Token = Tok_Colon
-                    or else (Token in Token_Class_Labeled_Stmt
-                              and then not Token_Is_At_Start_Of_Line)
-                  then
-                     T_Colon; -- past colon (if there, or msg for missing one)
-
-                     --  Test for more than one label
-
-                     loop
-                        exit when Token /= Tok_Identifier;
-                        Save_Scan_State (Scan_State); -- at second Id
-                        Scan; -- past Id
-
-                        if Token = Tok_Colon then
-                           Error_Msg_SP
-                              ("only one label allowed on block or loop");
-                           Scan; -- past colon on extra label
-
-                           --  Use the second label as the "real" label
-
-                           Scan_State_Label := Scan_State;
-
-                           --  We will set Error_name as the Block_Label since
-                           --  we really don't know which of the labels might
-                           --  be used at the end of the loop or block!
-
-                           Block_Label := Error_Name;
-
-                        --  If Id with no colon, then backup to point to the
-                        --  Id and we will issue the message below when we try
-                        --  to scan out the statement as some other form.
-
-                        else
-                           Restore_Scan_State (Scan_State); -- to second Id
-                           exit;
-                        end if;
-                     end loop;
-
-                     --  Loop_Statement (labeled Loop_Statement)
-
-                     if Token = Tok_Loop then
-                        Append_To (Statement_List,
-                          P_Loop_Statement (Id_Node));
-
-                     --  While statement (labeled loop statement with WHILE)
-
-                     elsif Token = Tok_While then
-                        Append_To (Statement_List,
-                          P_While_Statement (Id_Node));
-
-                     --  Declare statement (labeled block statement with
-                     --  DECLARE part)
-
-                     elsif Token = Tok_Declare then
-                        Append_To (Statement_List,
-                          P_Declare_Statement (Id_Node));
-
-                     --  Begin statement (labeled block statement with no
-                     --  DECLARE part)
-
-                     elsif Token = Tok_Begin then
-                        Append_To (Statement_List,
-                          P_Begin_Statement (Id_Node));
-
-                     --  For statement (labeled loop statement with FOR)
-
-                     elsif Token = Tok_For then
-                        Append_To (Statement_List,
-                          P_For_Statement (Id_Node));
-
-                     --  Improper statement follows label. If we have an
-                     --  expression token, then assume the colon was part
-                     --  of a misplaced declaration.
-
-                     elsif Token not in Token_Class_Eterm then
-                        Restore_Scan_State (Scan_State_Label);
-                        Junk_Declaration;
-
-                     --  Otherwise complain we have inappropriate statement
-
-                     else
-                        Error_Msg_AP
-                          ("loop or block statement must follow label");
-                     end if;
-
-                     Statement_Required := False;
-
-                  --  Here we have an identifier followed by something
-                  --  other than a colon, semicolon or assignment symbol.
-                  --  The only valid possibility is a name extension symbol
-
-                  elsif Token in Token_Class_Namext then
-                     Restore_Scan_State (Scan_State_Label); -- to Id
-                     Name_Node := P_Name;
-
-                     --  Skip junk right parens in this context
-
-                     while Token = Tok_Right_Paren loop
-                        Error_Msg_SC ("extra right paren");
-                        Scan; -- past )
-                     end loop;
-
-                     --  Check context following call
-
-                     if Token = Tok_Colon_Equal then
-                        Scan; -- past colon equal
-                        Append_To (Statement_List,
-                          P_Assignment_Statement (Name_Node));
-                        Statement_Required := False;
-
-                     --  Check common case of = used instead of :=
-
-                     elsif Token = Tok_Equal then
-                        T_Colon_Equal; -- give := expected message
-                        Append_To (Statement_List,
-                          P_Assignment_Statement (Name_Node));
-                        Statement_Required := False;
-
-                     --  Check apostrophe cases
-
-                     elsif Token = Tok_Apostrophe then
-                        Append_To (Statement_List,
-                          P_Code_Statement (Name_Node));
-                        Statement_Required := False;
-
-                     --  The only other valid item after a name is ; which
-                     --  means that the item we just scanned was a call.
-
-                     elsif Token = Tok_Semicolon then
-                        Append_To (Statement_List,
-                          P_Statement_Name (Name_Node));
-                        Scan; -- past semicolon
-                        Statement_Required := False;
-
-                     --  A slash following an identifier or a selected
-                     --  component in this situation is most likely a
-                     --  period (have a look at the keyboard :-)
-
-                     elsif Token = Tok_Slash
-                       and then (Nkind (Name_Node) = N_Identifier
-                                   or else
-                                 Nkind (Name_Node) = N_Selected_Component)
-                     then
-                        Error_Msg_SC ("""/"" should be "".""");
-                        Statement_Required := False;
-                        raise Error_Resync;
-
-                     --  Else we have a missing semicolon
-
-                     else
-                        TF_Semicolon;
-                        Statement_Required := False;
-                     end if;
-
-                  --  If junk after identifier, check if identifier is an
-                  --  instance of an incorrectly spelled keyword. If so, we
-                  --  do nothing. The Bad_Spelling_Of will have reset Token
-                  --  to the appropriate keyword, so the next time round the
-                  --  loop we will process the modified token. Note that we
-                  --  check for ELSIF before ELSE here. That's not accidental.
-                  --  We don't want to identify a misspelling of ELSE as
-                  --  ELSIF, and in particular we do not want to treat ELSEIF
-                  --  as ELSE IF.
-
-                  else
-                     Restore_Scan_State (Scan_State_Label); -- to identifier
-
-                     if Bad_Spelling_Of (Tok_Case)
-                       or else Bad_Spelling_Of (Tok_Declare)
-                       or else Bad_Spelling_Of (Tok_Elsif)
-                       or else Bad_Spelling_Of (Tok_Else)
-                       or else Bad_Spelling_Of (Tok_End)
-                       or else Bad_Spelling_Of (Tok_Exception)
-                       or else Bad_Spelling_Of (Tok_Exit)
-                       or else Bad_Spelling_Of (Tok_For)
-                       or else Bad_Spelling_Of (Tok_Goto)
-                       or else Bad_Spelling_Of (Tok_If)
-                       or else Bad_Spelling_Of (Tok_Loop)
-                       or else Bad_Spelling_Of (Tok_Or)
-                       or else Bad_Spelling_Of (Tok_Pragma)
-                       or else Bad_Spelling_Of (Tok_Raise)
-                       or else Bad_Spelling_Of (Tok_Return)
-                       or else Bad_Spelling_Of (Tok_When)
-                       or else Bad_Spelling_Of (Tok_While)
-                     then
-                        null;
-
-                     --  If not a bad spelling, then we really have junk
-
-                     else
-                        Scan; -- past identifier again
-
-                        --  If next token is first token on line, then we
-                        --  consider that we were missing a semicolon after
-                        --  the identifier, and process it as a procedure
-                        --  call with no parameters.
-
-                        if Token_Is_At_Start_Of_Line then
-                           Append_To (Statement_List,
-                             P_Statement_Name (Id_Node));
-                           T_Semicolon; -- to give error message
-                           Statement_Required := False;
-
-                        --  Otherwise we give a missing := message and
-                        --  simply abandon the junk that is there now.
-
-                        else
-                           T_Colon_Equal; -- give := expected message
-                           raise Error_Resync;
-                        end if;
-
-                     end if;
-                  end if;
-
-               --  Statement starting with operator symbol. This could be
-               --  a call, a name starting an assignment, or a qualified
-               --  expression.
-
-               when Tok_Operator_Symbol =>
-                  Check_Bad_Layout;
-                  Name_Node := P_Name;
-
-                  --  An attempt at a range attribute or a qualified expression
-                  --  must be illegal here (a code statement cannot possibly
-                  --  allow qualification by a function name).
-
-                  if Token = Tok_Apostrophe then
-                     Error_Msg_SC ("apostrophe illegal here");
-                     raise Error_Resync;
-                  end if;
-
-                  --  Scan possible assignment if we have a name
-
-                  if Expr_Form = EF_Name
-                    and then Token = Tok_Colon_Equal
-                  then
-                     Scan; -- past colon equal
-                     Append_To (Statement_List,
-                       P_Assignment_Statement (Name_Node));
-                  else
-                     Append_To (Statement_List,
-                       P_Statement_Name (Name_Node));
-                  end if;
-
-                  TF_Semicolon;
-                  Statement_Required := False;
+                  Token_Is_Identifier;
 
                --  Label starting with << which must precede real statement
 
                when Tok_Less_Less =>
-                  Append_To (Statement_List, P_Label);
+		  if Reactive_Statement_Allowed then
+                     Error_Msg_SC
+		       ("no reactive label not allowed in reactive section");
+		     Discard_Junk_Node (P_Label);
+		  else
+		     Append_To (Statement_List, P_Label);
+		  end if;
                   Statement_Required := True;
 
                --  Pragma appearing as a statement in a statement sequence
 
                when Tok_Pragma =>
-                  Check_Bad_Layout;
                   Append_To (Statement_List, P_Pragma);
 
                --  Begin_Statement (Block_Statement with no declare, no label)
 
                when Tok_Begin =>
-                  Check_Bad_Layout;
-                  Append_To (Statement_List, P_Begin_Statement);
+		  if Reactive_Statement_Allowed then
+                     Error_Msg_SC ("BEGIN not allowed in reactive section");
+		     Discard_Junk_Node (P_Begin_Statement);
+		  else
+		     Append_To (Statement_List, P_Begin_Statement);
+		  end if;
                   Statement_Required := False;
 
                --  Case_Statement
 
                when Tok_Case =>
-                  Check_Bad_Layout;
-                  Append_To (Statement_List, P_Case_Statement);
+		  if Reactive_Statement_Allowed then
+                     Error_Msg_SC ("CASE not allowed in reactive section");
+		     Discard_Junk_Node (P_Case_Statement);
+		  else
+		     Append_To (Statement_List, P_Case_Statement);
+		  end if;
                   Statement_Required := False;
 
                --  Block_Statement with DECLARE and no label
 
                when Tok_Declare =>
-                  Check_Bad_Layout;
-                  Append_To (Statement_List, P_Declare_Statement);
+		  if Reactive_Statement_Allowed then
+                     Error_Msg_SC ("DECLARE not allowed in reactive section");
+		     Discard_Junk_Node (P_Declare_Statement);
+		  else
+		     Append_To (Statement_List, P_Declare_Statement);
+		  end if;
                   Statement_Required := False;
 
                --  Exit_Statement
 
                when Tok_Exit =>
-                  Check_Bad_Layout;
                   Append_To (Statement_List, P_Exit_Statement);
                   Statement_Required := False;
 
                --  Loop_Statement with FOR and no label
 
                when Tok_For =>
-                  Check_Bad_Layout;
-                  Append_To (Statement_List, P_For_Statement);
+		  Append_To (Statement_List, P_For_Statement);
                   Statement_Required := False;
 
                --  Goto_Statement
 
                when Tok_Goto =>
-                  Check_Bad_Layout;
                   Append_To (Statement_List, P_Goto_Statement);
                   Statement_Required := False;
 
                --  If_Statement
 
                when Tok_If =>
-                  Check_Bad_Layout;
-                  Append_To (Statement_List, P_If_Statement);
+		  Append_To (Statement_List, P_If_Statement);
                   Statement_Required := False;
 
                --  Loop_Statement
 
                when Tok_Loop =>
-                  Check_Bad_Layout;
-                  Append_To (Statement_List, P_Loop_Statement);
+		  Append_To (Statement_List, P_Loop_Statement);
                   Statement_Required := False;
 
                --  Null_Statement
 
                when Tok_Null =>
-                  Check_Bad_Layout;
                   Append_To (Statement_List, P_Null_Statement);
-                  Statement_Required := False;
-
-               --  Raise_Statement
-
-               when Tok_Raise =>
-                  Check_Bad_Layout;
-                  Append_To (Statement_List, P_Raise_Statement);
                   Statement_Required := False;
 
                --  Return_Statement
 
                when Tok_Return =>
-                  Check_Bad_Layout;
-                  Append_To (Statement_List, P_Return_Statement);
+		  if Reactive_Statement_Allowed then
+                     Error_Msg_SC ("RETURN not allowed in reactive section");
+		     Discard_Junk_Node (P_Return_Statement);
+		  else
+		     Append_To (Statement_List, P_Return_Statement);
+		  end if;
                   Statement_Required := False;
 
                --  While_Statement (Block_Statement with while and no loop)
 
                when Tok_While =>
-                  Check_Bad_Layout;
-                  Append_To (Statement_List, P_While_Statement);
+		  Append_To (Statement_List, P_While_Statement);
+                  Statement_Required := False;
+
+                  --  Wait Statement
+
+               when Tok_Wait =>
+                  if Reactive_Statement_Allowed then
+                     Append_To (Statement_List, P_Wait_Statement);
+                  else
+                     Error_Msg_SC
+                       ("WAIT not allowed outside reaction section");
+                     Discard_Junk_Node (P_Wait_Statement);
+                  end if;
+                  Statement_Required := False;
+
+                  --  Pause Statement
+
+               when Tok_Pause =>
+                  if Reactive_Statement_Allowed then
+                     Append_To (Statement_List, P_Pause_Statement);
+                  else
+                     Error_Msg_SC
+                       ("PAUSE not allowed outside reaction section");
+                     Discard_Junk_Node (P_Pause_Statement);
+                  end if;
+                  Statement_Required := False;
+
+                  --  Select statement
+
+               when Tok_Select =>
+                  if Reactive_Statement_Allowed then
+                     Append_To
+                       (Statement_List,
+                        P_Select_Statement);
+                  else
+                     Error_Msg_SC
+                       ("SELECT not allowed outside reaction section");
+                     Discard_Junk_Node (P_Select_Statement);
+                  end if;
+                  Statement_Required := False;
+
+                  --  Fork_Statement
+
+               when Tok_Fork =>
+                  if Reactive_Statement_Allowed then
+                     Append_To (Statement_List, P_Fork_Statement);
+                  else
+                     Error_Msg_SC
+                       ("FORK not allowed outside reaction section");
+                     Discard_Junk_Node (P_Fork_Statement);
+                  end if;
+                  Statement_Required := False;
+
+                  --  Abort_Statement
+
+               when Tok_Abort =>
+                  if Reactive_Statement_Allowed then
+                     Append_To (Statement_List, P_Reactive_Abort_Statement);
+                  else
+                     Error_Msg_SC
+                       ("ABORT not allowed outside reaction section");
+                     Discard_Junk_Node (P_Reactive_Abort_Statement);
+                  end if;
+                  Statement_Required := False;
+
+                  --  Abort_Statement
+
+               when Tok_With =>
+		  Scan; -- past WITH
+                  if Reactive_Statement_Allowed then
+		     Save_Scan_State (Scan_State);
+		     if Token = Tok_Identifier
+		       and then Token_Name = Name_Activity
+		     then
+			Append_To (Statement_List, P_With_Activity_Statement);
+		     else
+			Restore_Scan_State (Scan_State_Label);
+			Error_Msg_SC ("WITH not allowed here");
+		     end if;
+                  else
+                     Error_Msg_SC
+                       ("WITH not allowed here");
+                  end if;
                   Statement_Required := False;
 
                --  Anything else is some kind of junk, signal an error message
@@ -880,14 +955,6 @@ package body Ch5 is
             Set_Parameter_Associations (Name_Node, Params_List);
             return Name_Node;
          end;
-
-      --  Case of call to attribute that denotes a procedure. Here we
-      --  just leave the attribute reference unchanged.
-
-      elsif Nkind (Name_Node) = N_Attribute_Reference
-        and then Is_Procedure_Attribute_Name (Attribute_Name (Name_Node))
-      then
-         return Name_Node;
 
       --  All other cases of names are parameterless procedure calls
 
@@ -1020,18 +1087,6 @@ package body Ch5 is
       --  the ELSIF (or an ELSE which has been determined should be ELSIF) is
       --  scanned out and is in Prev_Token.
 
-      procedure Check_If_Column;
-      --  An internal procedure used to check that THEN, ELSE ELSE, or ELSIF
-      --  appear in the right place if column checking is enabled (i.e. if
-      --  they are the first token on the line, then they must appear in
-      --  the same column as the opening IF).
-
-      procedure Check_Then_Column;
-      --  This procedure carries out the style checks for a THEN token
-      --  Note that the caller has set Loc to the Source_Ptr value for
-      --  the previous IF or ELSIF token. These checks apply only to a
-      --  THEN at the start of a line.
-
       function Else_Should_Be_Elsif return Boolean;
       --  An internal routine used to do a special error recovery check when
       --  an ELSE is encountered. It determines if the ELSE should be treated
@@ -1049,30 +1104,11 @@ package body Ch5 is
          Elsif_Node := New_Node (N_Elsif_Part, Prev_Token_Ptr);
          Loc := Prev_Token_Ptr;
          Set_Condition (Elsif_Node, P_Condition);
-         Check_Then_Column;
          Then_Scan;
          Set_Then_Statements
            (Elsif_Node, P_Sequence_Of_Statements (SS_Eftm_Eltm_Sreq));
          Append (Elsif_Node, Elsif_Parts (If_Node));
       end Add_Elsif_Part;
-
-      procedure Check_If_Column is
-      begin
-         if Style.RM_Column_Check and then Token_Is_At_Start_Of_Line
-           and then Start_Column /= Scope.Table (Scope.Last).Ecol
-         then
-            Error_Msg_Col := Scope.Table (Scope.Last).Ecol;
-            Error_Msg_SC ("(style) this token should be@");
-         end if;
-      end Check_If_Column;
-
-      procedure Check_Then_Column is
-      begin
-         if Token_Is_At_Start_Of_Line and then Token = Tok_Then then
-            Check_If_Column;
-            if Style_Check then Style.Check_Then (Loc); end if;
-         end if;
-      end Check_Then_Column;
 
       function Else_Should_Be_Elsif return Boolean is
          Scan_State : Saved_Scan_State;
@@ -1127,8 +1163,6 @@ package body Ch5 is
             raise Error_Resync;
          end if;
 
-         Check_Then_Column;
-
       else
          Error_Msg_SC ("no IF for this THEN");
          Set_Condition (If_Node, Error);
@@ -1143,8 +1177,6 @@ package body Ch5 is
 
       loop
          if Token = Tok_Elsif then
-            Check_If_Column;
-
             if Present (Else_Statements (If_Node)) then
                Error_Msg_SP ("ELSIF cannot appear after ELSE");
             end if;
@@ -1153,7 +1185,6 @@ package body Ch5 is
             Add_Elsif_Part;
 
          elsif Token = Tok_Else then
-            Check_If_Column;
             Scan; -- past ELSE
 
             if Else_Should_Be_Elsif then
@@ -1346,7 +1377,6 @@ package body Ch5 is
       Case_Alt_Node : Node_Id;
 
    begin
-      if Style_Check then Style.Check_Indentation; end if;
       Case_Alt_Node := New_Node (N_Case_Statement_Alternative, Token_Ptr);
       T_When; -- past WHEN (or give error in OTHERS case)
       Set_Discrete_Choices (Case_Alt_Node, P_Discrete_Choice_List);
@@ -1463,6 +1493,10 @@ package body Ch5 is
       else
          Loop_Node := New_Node (N_Loop_Statement, Token_Ptr);
 
+	 if Scope.Table (Scope.Last).Reaction_Section then
+	    Set_Is_Reactive (Loop_Node, True);
+	 end if;
+
          if No (Loop_Name) then
             Created_Name :=
               Make_Identifier (Sloc (Loop_Node),
@@ -1528,6 +1562,11 @@ package body Ch5 is
 
       else
          Loop_Node := New_Node (N_Loop_Statement, Token_Ptr);
+
+	 if Scope.Table (Scope.Last).Reaction_Section then
+	    Set_Is_Reactive (Loop_Node, True);
+	 end if;
+
          TF_Loop;
 
          if No (Loop_Name) then
@@ -1769,27 +1808,12 @@ package body Ch5 is
       Exit_Node := New_Node (N_Exit_Statement, Token_Ptr);
       Scan; -- past EXIT
 
+      if Scope.Table (Scope.Last).Reaction_Section then
+	 Set_Is_Reactive (Exit_Node, True);
+      end if;
+
       if Token = Tok_Identifier then
          Set_Name (Exit_Node, P_Qualified_Simple_Name);
-
-      elsif Style_Check then
-         --  This EXIT has no name, so check that
-         --  the innermost loop is unnamed too.
-
-         Check_No_Exit_Name :
-         for J in reverse 1 .. Scope.Last loop
-            if Scope.Table (J).Etyp = E_Loop then
-               if Present (Scope.Table (J).Labl)
-                 and then Comes_From_Source (Scope.Table (J).Labl)
-               then
-                  --  Innermost loop in fact had a name, style check fails
-
-                  Style.No_Exit_Name (Scope.Table (J).Labl);
-               end if;
-
-               exit Check_No_Exit_Name;
-            end if;
-         end loop Check_No_Exit_Name;
       end if;
 
       if Token = Tok_When and then not Missing_Semicolon_On_Exit then
@@ -1824,12 +1848,384 @@ package body Ch5 is
 
    begin
       Goto_Node := New_Node (N_Goto_Statement, Token_Ptr);
+
+      if Scope.Table (Scope.Last).Reaction_Section then
+	 Set_Is_Reactive (Goto_Node, True);
+      end if;
+
       Scan; -- past GOTO (or TO)
       Set_Name (Goto_Node, P_Qualified_Simple_Name_Resync);
       No_Constraint;
       TF_Semicolon;
       return Goto_Node;
    end P_Goto_Statement;
+
+   --------------------------
+   -- 5.2  Pause Statement --
+   --------------------------
+
+   --  PAUSE_STATEMENT ::=
+   --    pause;
+
+   --  Error recovery: can raise Error_Resync
+
+   function P_Pause_Statement (State : Node_Id := Empty) return Node_Id is
+
+      Ident      : Node_Id := State;
+      Pause_Node : Node_Id;
+   begin
+      Pause_Node := New_Node (N_Reactive_Pause_Statement, Prev_Token_Ptr);
+      Scan; -- Pass PAUSE
+      TF_Semicolon;
+
+      return Pause_Node;
+   end P_Pause_Statement;
+
+   -------------------------
+   -- 5.2  Wait Statement --
+   -------------------------
+
+   --  WAIT_STATEMENT ::=
+   --    wait EXPRESSION;
+
+   --  Error recovery: can raise Error_Resync
+
+   function P_Wait_Statement (State : Node_Id := Empty) return Node_Id is
+
+      Ident     : Node_Id := State;
+      Wait_Node : Node_Id;
+   begin
+      Wait_Node := New_Node (N_Reactive_Wait_Statement, Prev_Token_Ptr);
+      Scan; -- Pass WAIT
+      Set_Condition (Wait_Node, P_Condition);
+      TF_Semicolon;
+
+      return Wait_Node;
+   end P_Wait_Statement;
+
+   ---------------------------
+   -- 5.4  Select Statement --
+   ---------------------------
+
+   --  SELECT_STATEMENT ::=
+   --    select
+   --      SELECT_STATEMENT_ALTERNATIVE
+   --      {SELECT_STATEMENT_ALTERNATIVE}
+   --    end select;
+
+   --  SELECT_STATEMENT_ALTERNATIVE ::=
+   --    when EXPRESSION =>
+   --      SEQUENCE_OF_REACTIVE_STATEMENTS
+
+   --  The caller has checked that the first token is SELECT
+
+   --  Can raise Error_Resync
+
+   function P_Select_Statement (State : Node_Id := Empty) return Node_Id is
+
+      Ident       : Node_Id := State;
+      Select_Node : Node_Id;
+      Alter_List  : List_Id;
+      Count       : Integer;
+      Scan_State  : Saved_Scan_State;
+      Save_Sloc   : Source_Ptr;
+
+      function P_Select_Alternative return Node_Id;
+      -- Parse a select alternative
+
+      function P_Select_Alternative return Node_Id is
+         Alter_Node : Node_Id;
+
+      begin
+         Alter_Node := New_Node (N_Reactive_Select_Alternative, Token_Ptr);
+         Set_Condition (Alter_Node, P_Condition);
+
+         TF_Arrow;
+
+         Set_Statements
+           (Alter_Node,
+            P_Sequence_Of_Statements (SS_Whtm)); -- , RS_Whtm));
+
+         return Alter_Node;
+      end P_Select_Alternative;
+
+      --  strat of processung of P_Reactive_Select_Statement
+   begin
+      Select_Node := New_Node (N_Reactive_Select_Statement, Token_Ptr);
+
+      Push_Scope_Stack;
+      Scope.Table (Scope.Last).Etyp := E_Select;
+      Scope.Table (Scope.Last).Ecol := Start_Column;
+      Scope.Table (Scope.Last).Sloc := Token_Ptr;
+      Scope.Table (Scope.Last).Labl := Empty;
+      Scope.Table (Scope.Last).Node := Select_Node;
+
+      Scan; -- past SELECT
+
+      --  Loop through loop statement alternatives
+
+      --  Go through alternatives.
+
+      Count := 0;
+      Alter_List := New_List;
+      Set_Alternatives (Select_Node, Alter_List);
+      loop
+         --  End Select ternimates all alternatives
+
+         exit when Token = Tok_End or else Token = Tok_EOF;
+
+         --  WHEN begins alternative.
+
+         if Token = Tok_When
+           or else Bad_Spelling_Of (Tok_When)
+	 then
+            Scan; --  past WHEN
+            Append_To (Alter_List, P_Select_Alternative);
+
+            --  Identifier or Left_Parenthesis begins a condition.
+            --  Issue an error message and continue.
+
+         elsif Token = Tok_Identifier
+           or else Token = Tok_Left_Paren
+	 then
+            Error_Msg_SC ("WHEN expected");
+            Append_To (Alter_List, P_Select_Alternative);
+
+         else
+            Save_Sloc := Token_Ptr;
+            Save_Scan_State (Scan_State);
+
+            loop
+               if Token = Tok_Arrow then
+                  Restore_Scan_State (Scan_State);
+                  Error_Msg ("WHEN expected", Save_Sloc);
+                  Append_To (Alter_List, P_Select_Alternative);
+                  exit;
+               end if;
+
+               if Token = Tok_Semicolon
+                 or else Token = Tok_End
+                 or else Token = Tok_EOF then
+                  Error_Msg ("bad SELECT alternative", Save_Sloc);
+                  exit;
+               end if;
+
+               Scan;
+            end loop;
+         end if;
+
+         Count := Count + 1;
+      end loop;
+
+      if Count < 1 then
+         Error_Msg_SC
+           ("WHEN alternative expected for SELECT");
+      end if;
+
+      End_Statements;
+
+      --  Append_State_To_State_Node (State_Node, Select_Node);
+
+      return Select_Node;
+   end P_Select_Statement;
+
+   -------------------------
+   -- 5.4  Fork Statement --
+   -------------------------
+
+   --  FORK_STATEMENT ::=
+   --    fork
+   --      FORK_STATEMENT_ALTERNATIVE
+   --      {and then FORK_STATEMENT_ALTERNATIVE}
+   --    end fork when EXPRESSION;
+
+   --  FORK_STATEMENT_ALTERNATIVE ::=
+   --      SEQUENCE_OF_REACTIVE_STATEMENTS
+
+   --  The caller has checked that the first token is FORK
+
+   --  Can raise Error_Resync
+
+   function P_Fork_Statement (State : Node_Id := Empty) return Node_Id is
+
+      Fork_Node  : Node_Id;
+      Alter_List : List_Id;
+      Count      : Integer;
+      Ident      : Node_Id := State;
+
+      function P_Fork_Alternative return Node_Id;
+
+      function P_Fork_Alternative return Node_Id is
+         Alter_Node : Node_Id;
+
+      begin
+         Alter_Node := New_Node (N_Reactive_Fork_Alternative, Token_Ptr);
+
+         Set_Statements
+           (Alter_Node,
+            P_Sequence_Of_Statements (SS_Eftm_Eltm_Sreq)); -- , RS_Andtm));
+
+         return Alter_Node;
+      end P_Fork_Alternative;
+
+      --  strat of processung of P_Reactive_Fork_Statement
+   begin
+      Push_Scope_Stack;
+      Scope.Table (Scope.Last).Labl := Empty;
+      Scope.Table (Scope.Last).Ecol := Start_Column;
+      Scope.Table (Scope.Last).Sloc := Token_Ptr;
+      Scope.Table (Scope.Last).Etyp := E_Fork;
+
+      Fork_Node := New_Node (N_Reactive_Fork_Statement, Token_Ptr);
+      Scan; -- Pass FORK
+
+      --  Go through alternatives.
+      Count := 0;
+      Alter_List := New_List;
+      Set_Alternatives (Fork_Node, Alter_List);
+      loop
+         Append_To (Alter_List, P_Fork_Alternative);
+
+         --  End Fork ternimates all alternatives
+
+         exit when Token = Tok_End or else Token = Tok_EOF;
+
+         --  AND THEN terniminates alternative.
+
+         if Token = Tok_And then
+            Scan;
+            if Token = Tok_Then then
+               Scan;
+
+               --  AND as AND THEN
+            else
+               Error_Msg_SC ("AND should be AND THEN");
+               Scan;
+            end if;
+
+            --  OR instead of AND
+
+         elsif Token = Tok_Or then
+            Scan;
+            if Token = Tok_Then then
+               Error_Msg_SC ("OR THEN should be AND THEN");
+               Scan;
+
+            else
+               Error_Msg_SC ("OR should be AND THEN");
+               Scan;
+            end if;
+
+            --  All others cases are errors must a resync.
+         else
+	    if Count = 0 then
+	       Error_Msg_SC ("AND THEN expected");
+	    else
+	       Error_Msg_SC ("AND THEN or END FORK expected");
+	    end if;
+
+	      Count := 2;
+            exit;
+         end if;
+
+         Count := Count + 1;
+      end loop;
+
+      if Count < 1 then
+         Error_Msg_SC
+           ("AND THEN alternative expected for FORK");
+      end if;
+
+      End_Statements;
+
+      if Token = Tok_When then
+         Scan;
+         Set_Condition (Fork_Node, P_Condition);
+         TF_Semicolon;
+      else
+         Error_Msg_SC
+           ("WHEN condition is mandatory for end fork");
+      end if;
+
+      return Fork_Node;
+   end P_Fork_Statement;
+
+   --------------------------------
+   -- P_Reactive_Abort_Statement --
+   --------------------------------
+
+   function P_Reactive_Abort_Statement
+     (State : Node_Id := Empty) return Node_Id is
+
+      Ident         : Node_Id := State;
+      Abort_Node    : Node_Id;
+      Abort_Handler : Node_Id;
+   begin
+      Push_Scope_Stack;
+      Scope.Table (Scope.Last).Labl := Empty;
+      Scope.Table (Scope.Last).Ecol := Start_Column;
+      Scope.Table (Scope.Last).Sloc := Token_Ptr;
+      Scope.Table (Scope.Last).Etyp := E_Abort;
+
+      if Token = Tok_Abort or else Bad_Spelling_Of (Tok_When) then
+         Scan; -- past ABORT
+      else
+         Error_Msg_SC ("missing abort for abort");
+      end if;
+
+      Abort_Node := New_Node (N_Reactive_Abort_Statement, Token_Ptr);
+
+      Set_Statements
+        (Abort_Node,
+         P_Sequence_Of_Statements (SS_Whtm)); -- , RS_Whtm));
+
+      if Token = Tok_When or else Bad_Spelling_Of (Tok_When) then
+         Scan;
+      else
+         Error_Msg_Col    := Scope.Table (Scope.Last).Ecol;
+         Error_Msg_Sloc   := Scope.Table (Scope.Last).Sloc;
+         Error_Msg_SC ("no WHEN for this ABORT#!");
+      end if;
+
+      if Token = Tok_Semicolon or else Token = Tok_Do then
+         Error_Msg_SC ("missing abort condition for when");
+      else
+         Set_Condition (Abort_Node, P_Condition);
+      end if;
+
+      if Token = Tok_Do then
+         Scan; -- PASS DO
+         Abort_Handler := New_Node (N_Reactive_Abort_Handler, Token_Ptr);
+         Set_Statements
+           (Abort_Handler, P_Sequence_Of_Statements (SS_Sreq));
+
+	 Set_Abort_Handler (Abort_Node, Abort_Handler);
+
+         End_Statements;
+      else
+         TF_Semicolon;
+         Pop_Scope_Stack;
+      end if;
+
+      return Abort_Node;
+   end P_Reactive_Abort_Statement;
+
+   -------------------------------
+   -- P_With_Activity_Statement --
+   -------------------------------
+
+   function P_With_Activity_Statement return Node_Id is
+
+--      Activity_Node : Node_Id;
+   begin
+--      Activity_Node := New_Node (N_Reactive_Activity, Token_Ptr);
+      Scan; -- pas ACTIVITY
+      T_Is;
+
+      --      Set_Statements (Activity_Node, P_Sequence_Of_Statements (SS_Extm_Sreq));
+      --   return Activity_Node;
+      return Empty;
+   end P_With_Activity_Statement;
 
    ---------------------------
    -- Parse_Decls_Begin_End --
@@ -2015,19 +2411,10 @@ package body Ch5 is
          Set_Declarations (Parent, Decls);
 
          if Token = Tok_Begin then
-            if Style_Check then Style.Check_Indentation; end if;
 
             Error_Msg_Col := Scope.Table (Scope.Last).Ecol;
 
-            if Style.RM_Column_Check
-              and then Token_Is_At_Start_Of_Line
-              and then Start_Column /= Error_Msg_Col
-            then
-               Error_Msg_SC ("(style) BEGIN in wrong column, should be@");
-
-            else
-               Scope.Table (Scope.Last).Ecol := Start_Column;
-            end if;
+            Scope.Table (Scope.Last).Ecol := Start_Column;
 
             Scope.Table (Scope.Last).Sloc := Token_Ptr;
             Scan; -- past BEGIN

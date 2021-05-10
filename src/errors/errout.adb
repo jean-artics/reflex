@@ -44,7 +44,7 @@ with Sinput;   use Sinput;
 with Sinfo;    use Sinfo;
 with Snames;   use Snames;
 with Stand;    use Stand;
-with Style;
+-- with Style;
 with Uintp;    use Uintp;
 with Uname;    use Uname;
 
@@ -257,7 +257,7 @@ package body Errout is
       --  Start procesing of new message
 
       Sindex := Get_Source_File_Index (Flag_Location);
-      Test_Style_Warning_Serious_Msg (Msg);
+--      Test_Style_Warning_Serious_Msg (Msg);
       Orig_Loc := Original_Location (Flag_Location);
 
       --  If the current location is in an instantiation, the issue arises
@@ -809,7 +809,7 @@ package body Errout is
       Errors.Table (Cur_Msg).Line     := Get_Physical_Line_Number (Sptr);
       Errors.Table (Cur_Msg).Col      := Get_Column_Number (Sptr);
       Errors.Table (Cur_Msg).Warn     := Is_Warning_Msg;
-      Errors.Table (Cur_Msg).Style    := Is_Style_Msg;
+--      Errors.Table (Cur_Msg).Style    := Is_Style_Msg;
       Errors.Table (Cur_Msg).Serious  := Is_Serious_Error;
       Errors.Table (Cur_Msg).Uncond   := Is_Unconditional_Msg;
       Errors.Table (Cur_Msg).Msg_Cont := Continuation;
@@ -904,13 +904,8 @@ package body Errout is
                --  we do delete the message. This helps to avoid
                --  junk extra messages from cascaded parsing errors
 
-               if not (Errors.Table (Prev_Msg).Warn
-                         or
-                       Errors.Table (Prev_Msg).Style)
-                 or else
-                       (Errors.Table (Cur_Msg).Warn
-                         or
-                        Errors.Table (Cur_Msg).Style)
+               if not Errors.Table (Prev_Msg).Warn
+                 or else Errors.Table (Cur_Msg).Warn
                then
                   --  All tests passed, delete the message by simply
                   --  returning without any further processing.
@@ -946,7 +941,6 @@ package body Errout is
       --  Bump appropriate statistics count
 
       if Errors.Table (Cur_Msg).Warn
-        or else Errors.Table (Cur_Msg).Style
       then
          Warnings_Detected := Warnings_Detected + 1;
       else
@@ -1003,7 +997,7 @@ package body Errout is
          return;
       end if;
 
-      Test_Style_Warning_Serious_Msg (Msg);
+--      Test_Style_Warning_Serious_Msg (Msg);
 
       --  Special handling for warning messages
 
@@ -1047,7 +1041,7 @@ package body Errout is
          Last_Killed := True;
       end if;
 
-      if not Is_Warning_Msg and then not Is_Style_Msg then
+      if not Is_Warning_Msg then
          Set_Posted (N);
       end if;
    end Error_Msg_NEL;
@@ -1457,8 +1451,8 @@ package body Errout is
               or else K = N_Attribute_Reference
               or else K = N_Character_Literal
               or else K = N_Expanded_Name
-              or else K = N_Identifier
-              or else K = N_Operator_Symbol)
+              or else K = N_Identifier)
+--              or else K = N_Operator_Symbol)
         and then Present (Entity (N))
         and then Error_Posted (Entity (N))
       then
@@ -1611,7 +1605,7 @@ package body Errout is
          begin
             if E /= No_Error_Msg
               and then Errors.Table (E).Optr = Loc
-              and then (Errors.Table (E).Warn or Errors.Table (E).Style)
+              and then Errors.Table (E).Warn
             then
                Warnings_Detected := Warnings_Detected - 1;
                return True;
@@ -1645,35 +1639,7 @@ package body Errout is
             E := Errors.Table (E).Next;
          end loop;
 
-         if Nkind (N) = N_Raise_Constraint_Error
-           and then Original_Node (N) /= N
-           and then No (Condition (N))
-         then
-            --  Warnings may have been posted on subexpressions of
-            --  the original tree. We place the original node back
-            --  on the tree to remove those warnings, whose sloc
-            --  do not match those of any node in the current tree.
-            --  Given that we are in unreachable code, this modification
-            --  to the tree is harmless.
-
-            declare
-               Status : Traverse_Result;
-
-            begin
-               if Is_List_Member (N) then
-                  Set_Condition (N, Original_Node (N));
-                  Status := Check_All_Warnings (Condition (N));
-               else
-                  Rewrite (N, Original_Node (N));
-                  Status := Check_All_Warnings (N);
-               end if;
-
-               return Status;
-            end;
-
-         else
-            return OK;
-         end if;
+         return OK;
       end Check_For_Warning;
 
    --  Start of processing for Remove_Warning_Messages
@@ -1781,11 +1747,11 @@ package body Errout is
 
    procedure Set_Msg_Insertion_Column is
    begin
-      if Style.RM_Column_Check then
-         Set_Msg_Str (" in column ");
-         Set_Msg_Int (Int (Error_Msg_Col) + 1);
-      end if;
-   end Set_Msg_Insertion_Column;
+--        if Style.RM_Column_Check then
+--           Set_Msg_Str (" in column ");
+--           Set_Msg_Int (Int (Error_Msg_Col) + 1);
+--        end if;
+null;   end Set_Msg_Insertion_Column;
 
    ----------------------------
    -- Set_Msg_Insertion_Node --
@@ -2309,23 +2275,6 @@ package body Errout is
 
       if Debug_Flag_OO then
          return False;
-
-      --  When an atomic object refers to a non-atomic type in the same
-      --  scope, we implicitly make the type atomic. In the non-error
-      --  case this is surely safe (and in fact prevents an error from
-      --  occurring if the type is not atomic by default). But if the
-      --  object cannot be made atomic, then we introduce an extra junk
-      --  message by this manipulation, which we get rid of here.
-
-      --  We identify this case by the fact that it references a type for
-      --  which Is_Atomic is set, but there is no Atomic pragma setting it.
-
-      elsif Msg = "atomic access to & cannot be guaranteed"
-        and then Is_Type (E)
-        and then Is_Atomic (E)
-        and then No (Get_Rep_Pragma (E, Name_Atomic))
-      then
-         return True;
 
       --  When a size is wrong for a frozen type there is no explicit
       --  size clause, and other errors have occurred, suppress the

@@ -1,28 +1,31 @@
 ------------------------------------------------------------------------------
 --                                                                          --
---                         REFLEX COMPILER COMPONENTS                       --
+--                         GNAT COMPILER COMPONENTS                         --
 --                                                                          --
---          Copyright (C) 1992-2020, Free Software Foundation, Inc.         --
+--                             P A R . E N D H                              --
 --                                                                          --
--- Reflex is free software; you can redistribute it  and/or modify it under --
+--                                 B o d y                                  --
+--                                                                          --
+--          Copyright (C) 1992-2011, Free Software Foundation, Inc.         --
+--                                                                          --
+-- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
--- ware Foundation; either version 3, or (at your option) any later version --
--- Reflex is distributed in the hope that it will be useful, but WITH-      --
+-- ware  Foundation;  either version 3,  or (at your option) any later ver- --
+-- sion.  GNAT is distributed in the hope that it will be useful, but WITH- --
 -- OUT ANY WARRANTY;  without even the  implied warranty of MERCHANTABILITY --
 -- or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License --
 -- for  more details.  You should have  received  a copy of the GNU General --
--- Public License distributed with Reflex; see file COPYING3. If not, go to --
+-- Public License  distributed with GNAT; see file COPYING3.  If not, go to --
 -- http://www.gnu.org/licenses for a complete copy of the license.          --
 --                                                                          --
--- Reflex is a fork from the GNAT compiler. GNAT was originally developed   --
--- by the GNAT team at  New York University. Extensive  contributions to    --
--- GNAT were provided by Ada Core Technologies Inc. Reflex is developed  by --
--- the Artics team at Grenoble.                                             --
+-- GNAT was originally developed  by the GNAT team at  New York University. --
+-- Extensive contributions were provided by Ada Core Technologies Inc.      --
 --                                                                          --
 ------------------------------------------------------------------------------
 
-with Stringt; use Stringt;
-with Uintp;   use Uintp;
+--  with Namet.Sp; use Namet.Sp;
+with Stringt;  use Stringt;
+with Uintp;    use Uintp;
 
 with GNAT.Spelling_Checker; use GNAT.Spelling_Checker;
 
@@ -84,7 +87,7 @@ package body Endh is
    --  child unit or a node with a Chars field identifying the actual label.
 
    End_Labl_Present : Boolean;
-   --  Indicates that the value in End_Labl was for an explicit label.
+   --  Indicates that the value in End_Labl was for an explicit label
 
    Syntax_OK : Boolean;
    --  Set True if the entry is syntactically correct
@@ -120,7 +123,7 @@ package body Endh is
    function Explicit_Start_Label (SS_Index : Nat) return Boolean;
    --  Determines whether the specified entry in the scope stack has an
    --  explicit start label (i.e. one other than one that was created by
-   --  the parser when no explicit label was present)
+   --  the parser when no explicit label was present).
 
    procedure Output_End_Deleted;
    --  Output a message complaining that the current END structure does not
@@ -163,7 +166,10 @@ package body Endh is
    -- Check_End --
    ---------------
 
-   function Check_End return Boolean is
+   function Check_End
+     (Decl   : Node_Id    := Empty;
+      Is_Loc : Source_Ptr := No_Location) return Boolean
+   is
       Name_On_Separate_Line : Boolean;
       --  Set True if the name on an END line is on a separate source line
       --  from the END. This is highly suspicious, but is allowed. The point
@@ -216,6 +222,18 @@ package body Endh is
             End_Type := E_Record;
             Scan; -- past RECORD
 
+         elsif Token = Tok_Select then
+            End_Type := E_Select;
+            Scan; -- past SELECT
+
+         elsif Token = Tok_Abort then
+            End_Type := E_Abort;
+            Scan; -- past ABORT
+
+         elsif Token = Tok_Fork then
+            End_Type := E_Fork;
+            Scan; -- past Fork
+
          --  Cases which do allow labels
 
          else
@@ -226,7 +244,7 @@ package body Endh is
                End_Type := E_Loop;
 
             --  FOR or WHILE allowed (signalling error) to substitute for LOOP
-            --  if on the same line as the END
+            --  if on the same line as the END.
 
             elsif (Token = Tok_For or else Token = Tok_While)
               and then not Token_Is_At_Start_Of_Line
@@ -244,8 +262,7 @@ package body Endh is
             --  Now see if a name is present
 
             if Token = Tok_Identifier or else
-               Token = Tok_String_Literal or else
-               Token = Tok_Operator_Symbol
+               Token = Tok_String_Literal
             then
                if Token_Is_At_Start_Of_Line then
                   Name_On_Separate_Line := True;
@@ -291,7 +308,7 @@ package body Endh is
                   --  opening label, with the components all marked as not
                   --  from source, and Is_End_Label set in the identifier
                   --  or operator symbol. The location for all components
-                  --  is the curent token location.
+                  --  is the current token location.
 
                   --  Case of child unit name
 
@@ -322,9 +339,7 @@ package body Endh is
                                     Copy_Name (Selector_Name (N)));
 
                            else
-                              R :=
-                                Make_Identifier (Token_Ptr,
-                                  Chars => Chars (N));
+                              R := Make_Identifier (Token_Ptr, Chars (N));
                               Set_Comes_From_Source (N, False);
                               return R;
                            end if;
@@ -346,69 +361,97 @@ package body Endh is
                   elsif Nkind (End_Labl) = N_Defining_Identifier
                     or else Nkind (End_Labl) = N_Identifier
                   then
-                     End_Labl :=
-                       Make_Identifier (Token_Ptr,
-                         Chars => Chars (End_Labl));
+                     End_Labl := Make_Identifier (Token_Ptr, Chars (End_Labl));
 
-                  elsif Nkind (End_Labl) = N_Defining_Operator_Symbol
-                    or else Nkind (End_Labl) = N_Operator_Symbol
-                  then
-                     Get_Decoded_Name_String (Chars (End_Labl));
-
-                     End_Labl :=
-                       Make_Operator_Symbol (Token_Ptr,
-                         Chars  => Chars (End_Labl),
-                         Strval => String_From_Name_Buffer);
+--                    elsif Nkind (End_Labl) = N_Defining_Operator_Symbol
+--                      or else Nkind (End_Labl) = N_Operator_Symbol
+--                    then
+--                       Get_Decoded_Name_String (Chars (End_Labl));
+--
+--                       End_Labl :=
+--                         Make_Operator_Symbol (Token_Ptr,
+--                           Chars  => Chars (End_Labl),
+--                           Strval => String_From_Name_Buffer);
                   end if;
 
                   Set_Comes_From_Source (End_Labl, False);
                   End_Labl_Present := False;
 
-                  --  Do style check for missing label
+                  --  Do style check for label permitted but not present. Note:
+                  --  for the case of a block statement, the label is required
+                  --  to be repeated, and this legality rule is enforced
+                  --  independently.
 
-                  if Style_Check
-                    and then End_Type = E_Name
-                    and then Explicit_Start_Label (Scope.Last)
-                  then
-                     Style.No_End_Name (Scope.Table (Scope.Last).Labl);
-                  end if;
                end if;
             end if;
          end if;
 
-         --  Except in case of END RECORD, semicolon must follow. For END
-         --  RECORD, a semicolon does follow, but it is part of a higher level
-         --  construct. In any case, a missing semicolon is not serious enough
-         --  to consider the END statement to be bad in the sense that we
-         --  are dealing with (i.e. to be suspicious that it is not in fact
-         --  the END statement we are looking for!)
+         --  Deal with terminating aspect specifications and following semi-
+         --  colon. We skip this in the case of END RECORD, since in this
+         --  case the aspect specifications and semicolon are handled at
+         --  a higher level.
 
-         if End_Type /= E_Record then
-            if Token = Tok_Semicolon then
-               T_Semicolon;
+         if End_Type /= E_Record
+           and then End_Type /= E_Fork then
 
-            --  Semicolon is missing. If the missing semicolon is at the end
-            --  of the line, i.e. we are at the start of the line now, then
-            --  a missing semicolon gets flagged, but is not serious enough
-            --  to consider the END statement to be bad in the sense that we
-            --  are dealing with (i.e. to be suspicious that this END is not
-            --  the END statement we are looking for).
+	    --     --  Scan aspect specifications
 
-            --  Similarly, if we are at a colon, we flag it but a colon for
-            --  a semicolon is not serious enough to consider the END to be
-            --  incorrect. Same thing for a period in place of a semicolon.
+         --     if Aspect_Specifications_Present then
 
-            elsif Token_Is_At_Start_Of_Line
-              or else Token = Tok_Colon
-              or else Token = Tok_Dot
-            then
-               T_Semicolon;
+         --        --  Aspect specifications not allowed
 
-            --  If the missing semicolon is not at the start of the line,
-            --  then we do consider the END line to be dubious in this sense.
+         --        if No (Decl) then
 
-            else
-               End_OK := False;
+         --           --  Package declaration case
+
+         --           if Is_Loc /= No_Location then
+         --              Error_Msg_SC
+         --                ("misplaced aspects for package declaration");
+         --              Error_Msg
+         --                ("info: aspect specifications belong here", Is_Loc);
+         --              P_Aspect_Specifications (Empty);
+
+         --           --  Other cases where aspect specifications are not allowed
+
+         --           else
+         --              P_Aspect_Specifications (Error);
+         --           end if;
+
+         --        --  Aspect specifications allowed
+
+         --        else
+         --           P_Aspect_Specifications (Decl);
+         --        end if;
+
+         --     --  If no aspect specifications, must have a semicolon
+
+	    if End_Type /= E_Record then
+               if Token = Tok_Semicolon then
+                  T_Semicolon;
+
+               --  Semicolon is missing. If the missing semicolon is at the end
+               --  of the line, i.e. we are at the start of the line now, then
+               --  a missing semicolon gets flagged, but is not serious enough
+               --  to consider the END statement to be bad in the sense that we
+               --  are dealing with (i.e. to be suspicious that this END is not
+               --  the END statement we are looking for).
+
+               --  Similarly, if we are at a colon, we flag it but a colon for
+               --  a semicolon is not serious enough to consider the END to be
+               --  incorrect. Same thing for a period in place of a semicolon.
+
+               elsif Token_Is_At_Start_Of_Line
+                 or else Token = Tok_Colon
+                 or else Token = Tok_Dot
+               then
+                  T_Semicolon;
+
+               --  If the missing semicolon is not at the start of the line,
+               --  then we consider the END line to be dubious in this sense.
+
+               else
+                  End_OK := False;
+               end if;
             end if;
          end if;
       end if;
@@ -434,6 +477,7 @@ package body Endh is
 
             while not Token_Is_At_Start_Of_Line
               and then Prev_Token /= Tok_Record
+              and then Prev_Token /= Tok_Fork
               and then Prev_Token /= Tok_Semicolon
               and then Token /= Tok_End
               and then Token /= Tok_EOF
@@ -533,6 +577,8 @@ package body Endh is
            Token = Tok_If     or else
            Token = Tok_Loop   or else
            Token = Tok_Record or else
+           Token = Tok_Fork   or else
+           Token = Tok_Select or else
 
          --  Cases of bogus keywords ending loops
 
@@ -560,7 +606,8 @@ package body Endh is
          --  If we just scanned out record, then we are done, since the
          --  semicolon after END RECORD is not part of the END sequence
 
-         elsif Prev_Token = Tok_Record then
+         elsif Prev_Token = Tok_Record
+           or else Prev_Token = Tok_Fork then
             return;
 
          --  If we have a semicolon, scan it out and we are done
@@ -579,7 +626,6 @@ package body Endh is
          end if;
 
          if Token /= Tok_Identifier
-           and then Token /= Tok_Operator_Symbol
            and then Token /= Tok_String_Literal
          then
             exit;
@@ -632,13 +678,17 @@ package body Endh is
 
    --  Error recovery: cannot raise Error_Resync;
 
-   procedure End_Statements (Parent : Node_Id := Empty) is
+   procedure End_Statements
+     (Parent  : Node_Id    := Empty;
+      Decl    : Node_Id    := Empty;
+      Is_Sloc : Source_Ptr := No_Location)
+   is
    begin
       --  This loop runs more than once in the case where Check_End rejects
       --  the END sequence, as indicated by Check_End returning False.
 
       loop
-         if Check_End then
+         if Check_End (Decl, Is_Sloc) then
             if Present (Parent) then
                Set_End_Label (Parent, End_Labl);
             end if;
@@ -700,25 +750,18 @@ package body Endh is
               and then Chars (End_Labl) > Error_Name
               and then Chars (Nam) > Error_Name
             then
-               Get_Name_String (Chars (End_Labl));
                Error_Msg_Name_1 := Chars (Nam);
 
                if Error_Msg_Name_1 > Error_Name then
-                  declare
-                     S : constant String (1 .. Name_Len) :=
-                           Name_Buffer (1 .. Name_Len);
-
-                  begin
-                     Get_Name_String (Error_Msg_Name_1);
-
-                     if Is_Bad_Spelling_Of
-                         (Name_Buffer (1 .. Name_Len), S)
-                     then
-                        Error_Msg_N ("misspelling of %", End_Labl);
-                        Syntax_OK := True;
-                        return;
-                     end if;
-                  end;
+                  if Is_Bad_Spelling_Of
+		    (Get_String (Chars (Nam)), Get_String (Chars (End_Labl)))
+		  then
+                     Error_Msg_Name_1 := Chars (Nam);
+                     Error_Msg_N -- CODEFIX
+                       ("misspelling of %", End_Labl);
+                     Syntax_OK := True;
+                     return;
+                  end if;
                end if;
             end if;
          end;
@@ -751,25 +794,35 @@ package body Endh is
    --------------------------
 
    function Explicit_Start_Label (SS_Index : Nat) return Boolean is
-      L : constant Node_Id := Scope.Table (SS_Index).Labl;
+      L    : constant Node_Id := Scope.Table (SS_Index).Labl;
+      Etyp : constant SS_End_Type := Scope.Table (SS_Index).Etyp;
 
    begin
       if No (L) then
          return False;
-      elsif Comes_From_Source (L) then
+
+      --  In the following test we protect the call to Comes_From_Source
+      --  against lines containing previously reported syntax errors.
+
+      elsif (Etyp = E_Loop          or else
+             Etyp = E_Name          or else
+             Etyp = E_Suspicious_Is or else
+             Etyp = E_Bad_Is)
+         and then Comes_From_Source (L)
+      then
          return True;
+
       else
          return False;
       end if;
    end Explicit_Start_Label;
 
    ------------------------
-   -- Output End Deleted --
+   -- Output_End_Deleted --
    ------------------------
 
    procedure Output_End_Deleted is
    begin
-
       if End_Type = E_Loop then
          Error_Msg_SC ("no LOOP for this `END LOOP`!");
 
@@ -785,29 +838,35 @@ package body Endh is
       elsif End_Type = E_Select then
          Error_Msg_SC ("no SELECT for this `END SELECT`!");
 
+      elsif End_Type = E_Fork then
+         Error_Msg_SC ("no FORK for this `END FORK`!");
+
+      elsif End_Type = E_Abort then
+         Error_Msg_SC ("no Abort for this `END ABORT`!");
+
       else
          Error_Msg_SC ("no BEGIN for this END!");
       end if;
    end Output_End_Deleted;
 
    -------------------------
-   -- Output End Expected --
+   -- Output_End_Expected --
    -------------------------
 
    procedure Output_End_Expected (Ins : Boolean) is
       End_Type : SS_End_Type;
 
    begin
-      --  Suppress message if this was a potentially junk entry (e.g. a
-      --  record entry where no record keyword was present.
+      --  Suppress message if this was a potentially junk entry (e.g. a record
+      --  entry where no record keyword was present).
 
       if Scope.Table (Scope.Last).Junk then
          return;
       end if;
 
       End_Type := Scope.Table (Scope.Last).Etyp;
-      Error_Msg_Col    := Scope.Table (Scope.Last).Ecol;
-      Error_Msg_Sloc   := Scope.Table (Scope.Last).Sloc;
+      Error_Msg_Col  := Scope.Table (Scope.Last).Ecol;
+      Error_Msg_Sloc := Scope.Table (Scope.Last).Sloc;
 
       if Explicit_Start_Label (Scope.Last) then
          Error_Msg_Node_1 := Scope.Table (Scope.Last).Labl;
@@ -824,41 +883,54 @@ package body Endh is
       end if;
 
       if End_Type = E_Case then
-         Error_Msg_SC ("`END CASE;` expected@ for CASE#!");
+         Error_Msg_SC -- CODEFIX
+           ("`END CASE;` expected@ for CASE#!");
 
       elsif End_Type = E_If then
-         Error_Msg_SC ("`END IF;` expected@ for IF#!");
+         Error_Msg_SC -- CODEFIX
+           ("`END IF;` expected@ for IF#!");
 
       elsif End_Type = E_Loop then
          if Error_Msg_Node_1 = Empty then
-            Error_Msg_SC
+            Error_Msg_SC -- CODEFIX
               ("`END LOOP;` expected@ for LOOP#!");
          else
-            Error_Msg_SC ("`END LOOP &;` expected@!");
+            Error_Msg_SC -- CODEFIX
+              ("`END LOOP &;` expected@!");
          end if;
 
       elsif End_Type = E_Record then
-         Error_Msg_SC
+         Error_Msg_SC -- CODEFIX
            ("`END RECORD;` expected@ for RECORD#!");
 
       elsif End_Type = E_Select then
-         Error_Msg_SC
+         Error_Msg_SC -- CODEFIX
            ("`END SELECT;` expected@ for SELECT#!");
 
-      --  All remaining cases are cases with a name (we do not treat
-      --  the suspicious is cases specially for a replaced end, only
-      --  for an inserted end).
+      elsif End_Type = E_Fork then
+         Error_Msg_SC -- CODEFIX
+           ("`END FORK;` expected@ for FORK#!");
 
-      elsif End_Type = E_Name or else (not Ins) then
+      elsif End_Type = E_Abort then
+         Error_Msg_SC -- CODEFIX
+           ("`END ABORT;` expected@ for ABORT#!");
+
+      --  All remaining cases are cases with a name (we do not treat the
+      --  suspicious is cases specially for a replaced end, only for an
+      --  inserted end).
+
+      elsif End_Type = E_Name or else not Ins then
          if Error_Msg_Node_1 = Empty then
-            Error_Msg_SC ("`END;` expected@ for BEGIN#!");
+            Error_Msg_SC -- CODEFIX
+              ("`END;` expected@ for BEGIN#!");
          else
-            Error_Msg_SC ("`END &;` expected@!");
+            Error_Msg_SC -- CODEFIX
+              ("`END &;` expected@!");
          end if;
 
       --  The other possibility is a missing END for a subprogram with a
       --  suspicious IS (that probably should have been a semicolon). The
-      --  Missing IS confirms the suspicion!
+      --  missing IS confirms the suspicion!
 
       else -- End_Type = E_Suspicious_Is or E_Bad_Is
          Scope.Table (Scope.Last).Etyp := E_Bad_Is;
@@ -866,15 +938,15 @@ package body Endh is
    end Output_End_Expected;
 
    ------------------------
-   -- Output End Missing --
+   -- Output_End_Missing --
    ------------------------
 
    procedure Output_End_Missing is
       End_Type : SS_End_Type;
 
    begin
-      --  Suppress message if this was a potentially junk entry (e.g. a
-      --  record entry where no record keyword was present.
+      --  Suppress message if this was a potentially junk entry (e.g. a record
+      --  entry where no record keyword was present).
 
       if Scope.Table (Scope.Last).Junk then
          return;
@@ -910,6 +982,14 @@ package body Endh is
          Error_Msg_BC
            ("missing `END SELECT;` for SELECT#!");
 
+      elsif End_Type = E_Fork then
+         Error_Msg_BC
+           ("missing `END FORK;` for FORK#!");
+
+      elsif End_Type = E_Abort then
+         Error_Msg_BC
+           ("missing `END ABORT;` for ABORT#!");
+
       elsif End_Type = E_Name then
          if Error_Msg_Node_1 = Empty then
             Error_Msg_BC ("missing `END;` for BEGIN#!");
@@ -923,7 +1003,7 @@ package body Endh is
    end Output_End_Missing;
 
    ---------------------
-   -- Pop End Context --
+   -- Pop_End_Context --
    ---------------------
 
    procedure Pop_End_Context is
@@ -952,7 +1032,7 @@ package body Endh is
       else
          --  A special check. If we have END; followed by an end of file,
          --  WITH or SEPARATE, then if we are not at the outer level, then
-         --  we have a sytax error. Consider the example:
+         --  we have a syntax error. Consider the example:
 
          --   ...
          --      declare
@@ -977,7 +1057,7 @@ package body Endh is
          --  We also reserve an end with a name before the end of file if the
          --  name is the one we expect at the outer level.
 
-         if (Token = Tok_EOF or else
+         if (Token = Tok_EOF  or else
              Token = Tok_With)
            and then End_Type >= E_Name
            and then (not End_Labl_Present
@@ -1001,20 +1081,6 @@ package body Endh is
 
          if Syntax_OK then
 
-            --  Complain if checking columns and END is not in right column.
-            --  Right in this context means exactly right, or on the same
-            --  line as the opener.
-
-            if Style.RM_Column_Check then
-               if End_Column /= Scope.Table (Scope.Last).Ecol
-                 and then Current_Line_Start > Scope.Table (Scope.Last).Sloc
-               then
-                  Error_Msg_Col := Scope.Table (Scope.Last).Ecol;
-                  Error_Msg
-                    ("(style) END in wrong column, should be@", End_Sloc);
-               end if;
-            end if;
-
             --  One final check. If the end had a label, check for an exact
             --  duplicate of this end sequence, and if so, skip it with an
             --  appropriate message.
@@ -1032,7 +1098,6 @@ package body Endh is
                   Scan; -- past END
 
                   if Token = Tok_Identifier
-                    or else Token = Tok_Operator_Symbol
                   then
                      Nxt_Labl := P_Designator;
 
@@ -1097,7 +1162,7 @@ package body Endh is
 
          --  First we see how good the current END entry is with respect to
          --  what we expect. It is considered pretty good if the token is OK,
-         --  and either the label or the column matches. an END for RECORD is
+         --  and either the label or the column matches. An END for RECORD is
          --  always considered to be pretty good in the record case. This is
          --  because not only does a record disallow a nested structure, but
          --  also it is unlikely that such nesting could occur by accident.

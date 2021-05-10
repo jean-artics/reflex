@@ -112,9 +112,7 @@ package body Sem_Ch2 is
       --  turns out to be non-static, then the Is_Static_Expression flag
       --  will be reset in Eval_String_Literal.
 
-      if Ada_95 then
-         Set_Is_Static_Expression (N);
-      end if;
+      Set_Is_Static_Expression (N);
 
       if Comes_From_Source (N) and then Has_Wide_Character (N) then
          Check_Restriction (No_Wide_Characters, N);

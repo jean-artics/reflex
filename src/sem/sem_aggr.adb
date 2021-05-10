@@ -32,7 +32,7 @@ with Errout;   use Errout;
 with Exp_Util; use Exp_Util;
 with Freeze;   use Freeze;
 with Itypes;   use Itypes;
-with Lib.Xref; use Lib.Xref;
+--with Lib.Xref; use Lib.Xref;
 with Namet;    use Namet;
 with Nmake;    use Nmake;
 with Nlists;   use Nlists;
@@ -929,10 +929,6 @@ package body Sem_Aggr is
       --  Etype to the right aggregate subtype. Gigi needs this.
 
       if Raises_Constraint_Error (N) then
-         Aggr_Subtyp := Etype (N);
-         Rewrite (N,
-           Make_Raise_Constraint_Error (Sloc (N),
-             Reason => CE_Range_Check_Failed));
          Set_Raises_Constraint_Error (N);
          Set_Etype (N, Aggr_Subtyp);
          Set_Analyzed (N);
@@ -1269,8 +1265,8 @@ package body Sem_Aggr is
 
                if Is_Character_Type (Component_Typ)
                  and then No (Next_Index (Nxt_Ind))
-                 and then (Nkind (Expr) = N_String_Literal
-                            or else Nkind (Expr) = N_Operator_Symbol)
+                 and then (Nkind (Expr) = N_String_Literal)
+--                            or else Nkind (Expr) = N_Operator_Symbol)
                then
                   --  A string literal used in a multidimensional array
                   --  aggregate in place of the final one-dimensional
@@ -1501,12 +1497,6 @@ package body Sem_Aggr is
 
                   if Etype (Choice) = Any_Type then
                      return Failure;
-
-                  --  If the discrete choice raises CE get its original bounds.
-
-                  elsif Nkind (Choice) = N_Raise_Constraint_Error then
-                     Set_Raises_Constraint_Error (N);
-                     Get_Index_Bounds (Original_Node (Choice), Low, High);
 
                   --  Otherwise get its bounds as usual
 
@@ -2117,7 +2107,7 @@ package body Sem_Aggr is
                         end if;
                      end if;
 
-                     Generate_Reference (Compon, Selector_Name);
+--                     Generate_Reference (Compon, Selector_Name);
 
                   else
                      Error_Msg_NE

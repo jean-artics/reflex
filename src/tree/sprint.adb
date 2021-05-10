@@ -352,14 +352,14 @@ package body Sprint is
 
    procedure Process_TFAI_RR_Flags (Nod : Node_Id) is
    begin
-      if Treat_Fixed_As_Integer (Nod) then
-         Write_Char ('#');
-      end if;
+--        if Treat_Fixed_As_Integer (Nod) then
+--           Write_Char ('#');
+--        end if;
 
-      if Rounded_Result (Nod) then
-         Write_Char ('@');
-      end if;
-   end Process_TFAI_RR_Flags;
+--        if Rounded_Result (Nod) then
+--           Write_Char ('@');
+--        end if;
+null;   end Process_TFAI_RR_Flags;
 
    --------
    -- ps --
@@ -718,16 +718,19 @@ package body Sprint is
             Write_Str_With_Col_Check_Sloc ("new ");
             Sprint_Node (Expression (Node));
 
-            if Present (Storage_Pool (Node)) then
-               Write_Str_With_Col_Check ("[storage_pool = ");
-               Sprint_Node (Storage_Pool (Node));
-               Write_Char (']');
-            end if;
+--              if Present (Storage_Pool (Node)) then
+--                 Write_Str_With_Col_Check ("[storage_pool = ");
+--                 Sprint_Node (Storage_Pool (Node));
+--                 Write_Char (']');
+--              end if;
 
          when N_And_Then =>
             Sprint_Left_Opnd (Node);
             Write_Str_Sloc (" and then ");
             Sprint_Right_Opnd (Node);
+
+         when N_Aspect_Specification =>
+            null;
 
          when N_At_Clause =>
             Write_Indent_Str_Sloc ("for ");
@@ -753,18 +756,10 @@ package body Sprint is
             Write_Char (';');
 
          when N_Attribute_Reference =>
-            if Is_Procedure_Attribute_Name (Attribute_Name (Node)) then
-               Write_Indent;
-            end if;
-
             Sprint_Node (Prefix (Node));
             Write_Char_Sloc (''');
             Write_Name_With_Col_Check (Attribute_Name (Node));
             Sprint_Paren_Comma_List (Expressions (Node));
-
-            if Is_Procedure_Attribute_Name (Attribute_Name (Node)) then
-               Write_Char (';');
-            end if;
 
          when N_Block_Statement =>
             Write_Indent;
@@ -942,8 +937,8 @@ package body Sprint is
             Set_Debug_Sloc;
             Write_Id (Node);
 
-         when N_Defining_Operator_Symbol =>
-            Write_Name_With_Col_Check_Sloc (Chars (Node));
+--           when N_Defining_Operator_Symbol =>
+--              Write_Name_With_Col_Check_Sloc (Chars (Node));
 
          when N_Defining_Program_Unit_Name =>
             Set_Debug_Sloc;
@@ -1016,32 +1011,6 @@ package body Sprint is
 
          when N_Error =>
             Write_Str_With_Col_Check_Sloc ("<error>");
-
-         when N_Exception_Declaration =>
-            if Write_Indent_Identifiers (Node) then
-               Write_Str_With_Col_Check (" : ");
-               Write_Str_Sloc ("exception;");
-            end if;
-
-         when N_Exception_Handler =>
-            Write_Indent_Str_Sloc ("when ");
-
-            if Present (Choice_Parameter (Node)) then
-               Sprint_Node (Choice_Parameter (Node));
-               Write_Str (" : ");
-            end if;
-
-            Sprint_Bar_List (Exception_Choices (Node));
-            Write_Str (" => ");
-            Sprint_Indented_List (Statements (Node));
-
-         when N_Exception_Renaming_Declaration =>
-            Write_Indent;
-            Set_Debug_Sloc;
-            Sprint_Node (Defining_Identifier (Node));
-            Write_Str_With_Col_Check (" : exception renames ");
-            Sprint_Node (Name (Node));
-            Write_Char (';');
 
          when N_Exit_Statement =>
             Write_Indent_Str_Sloc ("exit");
@@ -1291,12 +1260,12 @@ package body Sprint is
             Set_Debug_Sloc;
             Sprint_Indented_List (Statements (Node));
 
-            if Present (Exception_Handlers (Node)) then
-               Write_Indent_Str ("exception");
-               Indent_Begin;
-               Sprint_Node_List (Exception_Handlers (Node));
-               Indent_End;
-            end if;
+--              if Present (Exception_Handlers (Node)) then
+--                 Write_Indent_Str ("exception");
+--                 Indent_Begin;
+--                 Sprint_Node_List (Exception_Handlers (Node));
+--                 Indent_End;
+--              end if;
 
             if Present (At_End_Proc (Node)) then
                Write_Indent_Str ("at end");
@@ -1553,9 +1522,9 @@ package body Sprint is
          when N_Op_Mod =>
             Sprint_Left_Opnd (Node);
 
-            if Treat_Fixed_As_Integer (Node) then
-               Write_Str (" #");
-            end if;
+--              if Treat_Fixed_As_Integer (Node) then
+--                 Write_Str (" #");
+--              end if;
 
             Write_Operator (Node, " mod ");
             Sprint_Right_Opnd (Node);
@@ -1588,9 +1557,9 @@ package body Sprint is
          when N_Op_Rem =>
             Sprint_Left_Opnd (Node);
 
-            if Treat_Fixed_As_Integer (Node) then
-               Write_Str (" #");
-            end if;
+--              if Treat_Fixed_As_Integer (Node) then
+--                 Write_Str (" #");
+--              end if;
 
             Write_Operator (Node, " rem ");
             Sprint_Right_Opnd (Node);
@@ -1615,8 +1584,8 @@ package body Sprint is
             Write_Operator (Node, " xor ");
             Sprint_Right_Opnd (Node);
 
-         when N_Operator_Symbol =>
-            Write_Name_With_Col_Check_Sloc (Chars (Node));
+--           when N_Operator_Symbol =>
+--              Write_Name_With_Col_Check_Sloc (Chars (Node));
 
          when N_Or_Else =>
             Sprint_Left_Opnd (Node);
@@ -1790,56 +1759,6 @@ package body Sprint is
                Write_Char (')');
             end if;
 
-         when N_Raise_Constraint_Error =>
-
-            --  This node can be used either as a subexpression or as a
-            --  statement form. The following test is a reasonably reliable
-            --  way to distinguish the two cases.
-
-            if Is_List_Member (Node)
-              and then Nkind (Parent (Node)) not in N_Subexpr
-            then
-               Write_Indent;
-            end if;
-
-            Write_Str_With_Col_Check_Sloc ("[constraint_error");
-            Write_Condition_And_Reason (Node);
-
-         when N_Raise_Program_Error =>
-
-            --  This node can be used either as a subexpression or as a
-            --  statement form. The following test is a reasonably reliable
-            --  way to distinguish the two cases.
-
-            if Is_List_Member (Node)
-              and then Nkind (Parent (Node)) not in N_Subexpr
-            then
-               Write_Indent;
-            end if;
-
-            Write_Str_With_Col_Check_Sloc ("[program_error");
-            Write_Condition_And_Reason (Node);
-
-         when N_Raise_Storage_Error =>
-
-            --  This node can be used either as a subexpression or as a
-            --  statement form. The following test is a reasonably reliable
-            --  way to distinguish the two cases.
-
-            if Is_List_Member (Node)
-              and then Nkind (Parent (Node)) not in N_Subexpr
-            then
-               Write_Indent;
-            end if;
-
-            Write_Str_With_Col_Check_Sloc ("[storage_error");
-            Write_Condition_And_Reason (Node);
-
-         when N_Raise_Statement =>
-            Write_Indent_Str_Sloc ("raise ");
-            Sprint_Node (Name (Node));
-            Write_Char (';');
-
          when N_Range =>
             Sprint_Node (Low_Bound (Node));
             Write_Str_Sloc (" .. ");
@@ -1988,13 +1907,13 @@ package body Sprint is
                Write_Char ('?');
             end if;
 
-            if Float_Truncate (Node) then
-               Write_Char ('^');
-            end if;
+--              if Float_Truncate (Node) then
+--                 Write_Char ('^');
+--              end if;
 
-            if Rounded_Result (Node) then
-               Write_Char ('@');
-            end if;
+--              if Rounded_Result (Node) then
+--                 Write_Char ('@');
+--              end if;
 
             Write_Char ('(');
             Sprint_Node (Expression (Node));
@@ -2092,7 +2011,28 @@ package body Sprint is
             else
                Write_Str (" is access;");
             end if;
-
+	    
+	 when N_Reactive_Type =>
+	    null;
+	 when N_Reactive_State =>
+	    null;
+	 when N_Reactive_Wait_Statement =>
+	    null;
+	 when N_Reactive_Pause_Statement =>
+	    null;
+	 when N_Reactive_Fork_Statement =>
+	    null;
+	 when N_Reactive_Fork_Alternative =>
+	    null;
+	 when N_Reactive_Select_Statement =>
+	    null;
+	 when N_Reactive_Select_Alternative =>
+	    null;
+	 when N_Reactive_Abort_Statement =>
+	    null;
+	 when N_Reactive_Abort_Handler =>
+	    null;
+	    
       end case;
 
       if Nkind (Node) in N_Subexpr
@@ -2251,27 +2191,8 @@ package body Sprint is
    --------------------------------
 
    procedure Write_Condition_And_Reason (Node : Node_Id) is
-      Image : constant String := RT_Exception_Code'Image
-                                   (RT_Exception_Code'Val
-                                     (UI_To_Int (Reason (Node))));
-
    begin
-      if Present (Condition (Node)) then
-         Write_Str_With_Col_Check (" when ");
-         Sprint_Node (Condition (Node));
-      end if;
-
-      Write_Str (" """);
-
-      for J in 4 .. Image'Last loop
-         if Image (J) = '_' then
-            Write_Char (' ');
-         else
-            Write_Char (Fold_Lower (Image (J)));
-         end if;
-      end loop;
-
-      Write_Str ("""]");
+      null;
    end Write_Condition_And_Reason;
 
    -----------------

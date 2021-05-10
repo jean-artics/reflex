@@ -249,6 +249,11 @@ package body Rxada.Gen.Ch3 is
       elsif Nkind (Type_Def) = N_Derived_Type_Definition then
          Generate_Derived_Type_Definition (This, Node);
 	    
+         --  REACTIVE_TYPE_DEFINITION
+	    
+      elsif Nkind (Type_Def) = N_Reactive_Type then
+         Generate_Reactive_Type_Definition (This, Node);
+	    
       else
          Error_Msg_N
            ("unknown reflex type definition for type ", Def_Id);
@@ -525,6 +530,34 @@ package body Rxada.Gen.Ch3 is
 	 Write_Eol (Ob);
       end if;
    end Generate_Derived_Type_Definition;
+   
+   ---------------------------------------
+   -- Generate_Reactive_Type_Definition --
+   ---------------------------------------
+   
+   procedure Generate_Reactive_Type_Definition
+     (This : access Ada_Generator_Record;
+      Node : Node_Id) is
+      
+      Ob       : Output_Buffer := This.Get_Output_Buffer;
+      Def_Id   : Entity_Id := Defining_Identifier (Node);
+      Type_Def : Node_Id;
+   begin
+      Put_Line
+	("Generate_Reactive_Type_Definition " & Get_String (Chars (Def_Id)));
+      Type_Def := Type_Definition (Node);
+      Put_Line
+	("   Type_def " & Nkind (Type_Def)'Img);
+      
+
+      pragma Assert (Nkind (Type_Def) = N_Reactive_Type);
+      
+      Write_Indent_Str (Ob, "type ");
+      Write_Id (Ob, Def_Id);
+      Write_Str (Ob, " is ");
+      Write_Str (Ob, "reactive;");
+      Write_Eol (Ob);
+   end Generate_Reactive_Type_Definition;
    
    --------------------
    -- Generate_Range --

@@ -32,7 +32,7 @@ with Errout;   use Errout;
 with Exp_Util; use Exp_Util;
 --  with Exp_Tss;  use Exp_Tss;
 with Layout;   use Layout;
-with Lib.Xref; use Lib.Xref;
+-- with Lib.Xref; use Lib.Xref;
 with Nlists;   use Nlists;
 with Nmake;    use Nmake;
 with Opt;      use Opt;
@@ -1274,7 +1274,6 @@ package body Freeze is
          Comp : Entity_Id;
          -- IR   : Node_Id;
          Junk : Boolean;
-         ADC  : Node_Id;
 
          Unplaced_Component : Boolean := False;
          --  Set True if we find at least one component with no component
@@ -1553,14 +1552,6 @@ package body Freeze is
             Next_Entity (Comp);
          end loop;
 
-         --  Check for useless pragma Bit_Order
-
-         if not Placed_Component and then Reverse_Bit_Order (Rec) then
-            ADC := Get_Attribute_Definition_Clause (Rec, Attribute_Bit_Order);
-            Error_Msg_N ("?Bit_Order specification has no effect", ADC);
-            Error_Msg_N ("\?since no component clauses were specified", ADC);
-         end if;
-
          --  Check for useless pragma Pack when all components placed
 
          if Is_Packed (Rec)
@@ -1711,39 +1702,6 @@ package body Freeze is
             Set_Encoded_Interface_Name
               (E, Get_Default_External_Name (E));
 
-         --  Special processing for atomic objects appearing in object decls
-
-         elsif Is_Atomic (E)
-           and then Nkind (Parent (E)) = N_Object_Declaration
-           and then Present (Expression (Parent (E)))
-         then
-            declare
-               Expr : constant Node_Id := Expression (Parent (E));
-
-            begin
-               --  If expression is an aggregate, assign to a temporary to
-               --  ensure that the actual assignment is done atomically rather
-               --  than component-wise (the assignment to the temp may be done
-               --  component-wise, but that is harmless.
-
-               if Nkind (Expr) = N_Aggregate then
-                  Expand_Atomic_Aggregate (Expr, Etype (E));
-
-               --  If the expression is a reference to a record or array
-               --  object entity, then reset Is_True_Constant to False so
-               --  that the compiler will not optimize away the intermediate
-               --  object, which we need in this case for the same reason
-               --  (to ensure that the actual assignment is atomic, rather
-               --  than component-wise).
-
-               elsif Is_Entity_Name (Expr)
-                 and then (Is_Record_Type (Etype (Expr))
-                             or else
-                           Is_Array_Type (Etype (Expr)))
-               then
-                  Set_Is_True_Constant (Entity (Expr), False);
-               end if;
-            end;
          end if;
 
          --  For a subprogram, freeze all parameter types and also the return
@@ -1768,9 +1726,7 @@ package body Freeze is
 
                   function Is_Fat_C_Ptr_Type (T : Entity_Id) return Boolean is
                   begin
-                     return (Convention (E) = Convention_C
-                               or else
-                             Convention (E) = Convention_CPP)
+                     return (Convention (E) = Convention_C)
                        and then Is_Access_Type (T)
                        and then Esize (T) > Ttypes.System_Address_Size;
                   end Is_Fat_C_Ptr_Type;
@@ -1877,17 +1833,6 @@ package body Freeze is
                Freeze_And_Append (Alias (E), Loc, Result);
             end if;
 
-            --  If the return type requires a transient scope, and we are on
-            --  a target allowing functions to return with a depressed stack
-            --  pointer, then we mark the function as requiring this treatment.
-
-            if Ekind (E) = E_Function
-              and then Functions_Return_By_DSP_On_Target
-              and then Requires_Transient_Scope (Etype (E))
-            then
-               Set_Function_Returns_With_DSP (E);
-            end if;
-
             if not Is_Internal (E) then
                Freeze_Subprogram (E);
             end if;
@@ -1927,15 +1872,7 @@ package body Freeze is
                --  inherited the indication from elsewhere (e.g. an address
                --  clause, which is not good enough in RM terms!)
 
-               if Present (Get_Rep_Pragma (E, Name_Atomic))
-                    or else
-                  Present (Get_Rep_Pragma (E, Name_Atomic_Components))
-               then
-                  Error_Msg_N
-                    ("stand alone atomic constant must be " &
-                     "imported ('R'M 'C.6(13))", E);
-
-               elsif Present (Get_Rep_Pragma (E, Name_Volatile))
+               if Present (Get_Rep_Pragma (E, Name_Volatile))
                        or else
                      Present (Get_Rep_Pragma (E, Name_Volatile_Components))
                then
@@ -2069,7 +2006,6 @@ package body Freeze is
 
                   begin
                      if (Is_Packed (E) or else Has_Pragma_Pack (E))
-                       and then not Has_Atomic_Components (E)
                        and then Known_Static_RM_Size (Ctyp)
                      then
                         Csiz := UI_Max (RM_Size (Ctyp), 1);
@@ -2452,16 +2388,6 @@ package body Freeze is
                Next_Formal (Formal);
             end loop;
 
-            --  If the return type requires a transient scope, and we are on
-            --  a target allowing functions to return with a depressed stack
-            --  pointer, then we mark the function as requiring this treatment.
-
-            if Functions_Return_By_DSP_On_Target
-              and then Requires_Transient_Scope (Etype (E))
-            then
-               Set_Function_Returns_With_DSP (E);
-            end if;
-
             Freeze_Subprogram (E);
          end if;
 
@@ -2552,7 +2478,7 @@ package body Freeze is
                      Ent := Alias (Ent);
                   end loop;
 
-                  Generate_Reference (E, Ent, 'p', Set_Ref => False);
+--                  Generate_Reference (E, Ent, 'p', Set_Ref => False);
                   Next_Elmt (Prim);
                end loop;
 
@@ -3033,19 +2959,6 @@ package body Freeze is
                  N_Package_Body          |
                  N_Subprogram_Body       |
                  N_Block_Statement       => exit;
-
-            --  The expander is allowed to define types in any statements list,
-            --  so any of the following parent nodes also mark a freezing point
-            --  if the actual node is in a list of statements or declarations.
-
-            when N_Exception_Handler          |
-                 N_If_Statement               |
-                 N_Elsif_Part                 |
-                 N_Case_Statement_Alternative |
-                 N_Compilation_Unit_Aux       |
-                 N_Freeze_Entity              =>
-
-               exit when Is_List_Member (P);
 
             --  Note: The N_Loop_Statement is a special case. A type that
             --  appears in the source can never be frozen in a loop (this
@@ -3576,9 +3489,6 @@ package body Freeze is
               or else Nkind (Dcopy) = N_Character_Literal
               or else Nkind (Dcopy) = N_String_Literal
               or else Nkind (Dcopy) = N_Null
-              or else (Nkind (Dcopy) = N_Attribute_Reference
-                        and then
-                       Attribute_Name (Dcopy) = Name_Null_Parameter)
             then
 
                --  If there is no default function, we must still do a full

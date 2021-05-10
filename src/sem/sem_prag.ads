@@ -30,16 +30,6 @@ package Sem_Prag is
    procedure Analyze_Pragma (N : Node_Id);
    --  Analyze procedure for pragma reference node N
 
-   function Delay_Config_Pragma_Analyze (N : Node_Id) return Boolean;
-   --  N is a pragma appearing in a configuration pragma file. Most
-   --  such pragmas are analyzed when the file is read, before parsing
-   --  and analyzing the main unit. However, the analysis of certain
-   --  pragmas results in adding information to the compiled main unit,
-   --  and this cannot be done till the main unit is processed. Such
-   --  pragmas return True from this function and in Frontend pragmas
-   --  where Delay_Config_Pragma_Analyze is True have their analysis
-   --  delayed until after the main program is parsed and analyzed.
-
    function Is_Non_Significant_Pragma_Reference (N : Node_Id) return Boolean;
    --  The node N is a node for an entity and the issue is whether the
    --  occurrence is a reference for the purposes of giving warnings

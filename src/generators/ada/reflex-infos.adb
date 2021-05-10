@@ -129,7 +129,7 @@ package body Reflex.Infos is
    begin
       Set_Rx_Infos (Node, To_Address (Reflex_Infos_Ptr (Infos)));
    end Set_Reflex_Infos;
-      
+   
    -----------------
    -- Is_Expanded --
    -----------------
@@ -367,5 +367,79 @@ package body Reflex.Infos is
    begin
       This.Anonym := V;
    end Set_Is_Anonym;
+   
+   ----------------
+   -- Get_Vertex --
+   ----------------
+   
+   function Get_Vertex (N : Node_Id) return Vertex_Id is
+      This : Reflex_Infos_Ptr := Get_Reflex_Infos (N);
+   begin
+      return This.Vertex;
+   end Get_Vertex;
+   
+   ----------------
+   -- Set_Vertex --
+   ----------------
+   
+   procedure Set_Vertex 
+     (N : Node_Id;
+      V : Vertex_Id) is
+      
+      This : Reflex_Infos_Ptr := Get_Reflex_Infos (N);
+   begin
+      This.Vertex := V;
+   end Set_Vertex;
+   
+   ---------------------
+   -- Get_Entity_Refs --
+   ---------------------
+   
+   function Get_Entity_Refs (E : Node_Id) return Reflex.Nodes_Lists.List is
+      
+      This : Reflex_Infos_Ptr := Get_Reflex_Infos (E);
+   begin
+      return This.Entity_Refs;
+   end Get_Entity_Refs;
+   
+   -----------------------------
+   -- Remove_Entity_Reference --
+   -----------------------------
+   
+   procedure Remove_Entity_Reference 
+     (E : Node_Id;
+      N : Node_Id) is
+      
+      This : Reflex_Infos_Ptr := Get_Reflex_Infos (E);
+      Cur  : Reflex.Nodes_Lists.Cursor;
+   begin
+      Cur := This.Entity_Refs.First;
+      while Reflex.Nodes_Lists.Has_Element  (Cur) loop
+	 if Reflex.Nodes_Lists.Element (Cur) = N then
+	    This.Entity_Refs.Delete (Cur);
+	    return;
+	 end if;
+	 Reflex.Nodes_Lists.Next (Cur);
+      end loop;
+   end Remove_Entity_Reference;
+   
+   --------------------------
+   -- Set_Entity_Reference --
+   --------------------------
+   
+   procedure Set_Entity_Reference 
+     (N : Node_Id;
+      E : Node_Id) is
+      
+      This : Reflex_Infos_Ptr := Get_Reflex_Infos (E);
+      Old  : Node_Id;
+   begin
+      Old := Entity (N);
+      Remove_Entity_Reference (Old, N);
+      
+      if not This.Entity_Refs.Contains (N) then
+	 This.Entity_Refs.Append (N);
+      end if;
+   end Set_Entity_Reference;
    
 end Reflex.Infos;

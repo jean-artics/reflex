@@ -30,7 +30,7 @@
 with Fname.UF; use Fname.UF;
 with Osint;    use Osint;
 with Stringt;  use Stringt;
-with Stylesw;  use Stylesw;
+--with Stylesw;  use Stylesw;
 with Uintp;    use Uintp;
 with Uname;    use Uname;
 
@@ -233,30 +233,6 @@ begin
 
    case Get_Pragma_Id (Pragma_Name) is
 
-      ------------
-      -- Ada_83 --
-      ------------
-
-      --  This pragma must be processed at parse time, since we want to set
-      --  the Ada 83 and Ada 95 switches properly at parse time to recognize
-      --  Ada 83 syntax or Ada 95 syntax as appropriate.
-
-      when Pragma_Ada_83 =>
-         Ada_83 := True;
-         Ada_95 := False;
-
-      ------------
-      -- Ada_95 --
-      ------------
-
-      --  This pragma must be processed at parse time, since we want to set
-      --  the Ada 83 and Ada_95 switches properly at parse time to recognize
-      --  Ada 83 syntax or Ada 95 syntax as appropriate.
-
-      when Pragma_Ada_95 =>
-         Ada_83 := False;
-         Ada_95 := True;
-
       -----------
       -- Debug --
       -----------
@@ -305,358 +281,6 @@ begin
          Check_No_Identifier (Arg1);
          Check_Arg_Is_On_Or_Off (Arg1);
          Opt.Extensions_Allowed := (Chars (Expression (Arg1)) = Name_On);
-
-      ----------------
-      -- List (2.8) --
-      ----------------
-
-      --  pragma List (Off | On)
-
-      --  The processing for pragma List must be done at parse time,
-      --  since a listing can be generated in parse only mode.
-
-      when Pragma_List =>
-         Check_Arg_Count (1);
-         Check_No_Identifier (Arg1);
-         Check_Arg_Is_On_Or_Off (Arg1);
-
-         --  We unconditionally make a List_On entry for the pragma, so that
-         --  in the List (Off) case, the pragma will print even in a region
-         --  of code with listing turned off (this is required!)
-
-         List_Pragmas.Increment_Last;
-         List_Pragmas.Table (List_Pragmas.Last) :=
-           (Ptyp => List_On, Ploc => Sloc (Pragma_Node));
-
-         --  Now generate the list off entry for pragma List (Off)
-
-         if Chars (Expression (Arg1)) = Name_Off then
-            List_Pragmas.Increment_Last;
-            List_Pragmas.Table (List_Pragmas.Last) :=
-              (Ptyp => List_Off, Ploc => Semi);
-         end if;
-
-      ----------------
-      -- Page (2.8) --
-      ----------------
-
-      --  pragma Page;
-
-      --  Processing for this pragma must be done at parse time, since a
-      --  listing can be generated in parse only mode with semantics off.
-
-      when Pragma_Page =>
-         Check_Arg_Count (0);
-         List_Pragmas.Increment_Last;
-         List_Pragmas.Table (List_Pragmas.Last) := (Page, Semi);
-
-      ----------------------------------------------------------
-      -- Source_File_Name and Source_File_Name_Project (GNAT) --
-      ----------------------------------------------------------
-
-      --  These two pragmas have the same syntax and semantics.
-      --  There are five forms of these pragmas:
-
-      --  pragma Source_File_Name (
-      --    [UNIT_NAME      =>] unit_NAME,
-      --     BODY_FILE_NAME =>  STRING_LITERAL);
-
-      --  pragma Source_File_Name (
-      --    [UNIT_NAME      =>] unit_NAME,
-      --     SPEC_FILE_NAME =>  STRING_LITERAL);
-
-      --  pragma Source_File_Name (
-      --     BODY_FILE_NAME  => STRING_LITERAL
-      --  [, DOT_REPLACEMENT => STRING_LITERAL]
-      --  [, CASING          => CASING_SPEC]);
-
-      --  pragma Source_File_Name (
-      --     SPEC_FILE_NAME  => STRING_LITERAL
-      --  [, DOT_REPLACEMENT => STRING_LITERAL]
-      --  [, CASING          => CASING_SPEC]);
-
-      --  pragma Source_File_Name (
-      --     SUBUNIT_FILE_NAME  => STRING_LITERAL
-      --  [, DOT_REPLACEMENT    => STRING_LITERAL]
-      --  [, CASING             => CASING_SPEC]);
-
-      --  CASING_SPEC ::= Uppercase | Lowercase | Mixedcase
-
-      --  Pragma Source_File_Name_Project (SFNP) is equivalent to pragma
-      --  Source_File_Name (SFN), however their usage is exclusive:
-      --  SFN can only be used when no project file is used, while
-      --  SFNP can only be used when a project file is used.
-
-      --  The Project Manager produces a configuration pragmas file that
-      --  is communicated to the compiler with -gnatec switch. This file
-      --  contains only SFNP pragmas (at least two for the default naming
-      --  scheme. As this configuration pragmas file is always the first
-      --  processed by the compiler, it prevents the use of pragmas SFN in
-      --  other config files when a project file is in use.
-
-      --  Note: we process this during parsing, since we need to have the
-      --  source file names set well before the semantic analysis starts,
-      --  since we load the spec and with'ed packages before analysis.
-
-      when Pragma_Source_File_Name | Pragma_Source_File_Name_Project =>
-         Source_File_Name : declare
-            Unam  : Unit_Name_Type;
-            Expr1 : Node_Id;
-            Pat   : String_Ptr;
-            Typ   : Character;
-            Dot   : String_Ptr;
-            Cas   : Casing_Type;
-            Nast  : Nat;
-
-            function Get_Fname (Arg : Node_Id) return Name_Id;
-            --  Process file name from unit name form of pragma
-
-            function Get_String_Argument (Arg : Node_Id) return String_Ptr;
-            --  Process string literal value from argument
-
-            procedure Process_Casing (Arg : Node_Id);
-            --  Process Casing argument of pattern form of pragma
-
-            procedure Process_Dot_Replacement (Arg : Node_Id);
-            --  Process Dot_Replacement argument of patterm form of pragma
-
-            ---------------
-            -- Get_Fname --
-            ---------------
-
-            function Get_Fname (Arg : Node_Id) return Name_Id is
-            begin
-               String_To_Name_Buffer (Strval (Expression (Arg)));
-
-               for J in 1 .. Name_Len loop
-                  if Is_Directory_Separator (Name_Buffer (J)) then
-                     Error_Msg
-                       ("directory separator character not allowed",
-                        Sloc (Expression (Arg)) + Source_Ptr (J));
-                  end if;
-               end loop;
-
-               return Name_Find;
-            end Get_Fname;
-
-            -------------------------
-            -- Get_String_Argument --
-            -------------------------
-
-            function Get_String_Argument (Arg : Node_Id) return String_Ptr is
-               Str : String_Id;
-
-            begin
-               if Nkind (Expression (Arg)) /= N_String_Literal
-                 and then
-                  Nkind (Expression (Arg)) /= N_Operator_Symbol
-               then
-                  Error_Msg_N
-                    ("argument for pragma% must be string literal", Arg);
-                  raise Error_Resync;
-               end if;
-
-               Str := Strval (Expression (Arg));
-
-               --  Check string has no wide chars
-
-               for J in 1 .. String_Length (Str) loop
-                  if Get_String_Char (Str, J) > 255 then
-                     Error_Msg
-                       ("wide character not allowed in pattern for pragma%",
-                        Sloc (Expression (Arg2)) + Text_Ptr (J) - 1);
-                  end if;
-               end loop;
-
-               --  Acquire string
-
-               String_To_Name_Buffer (Str);
-               return new String'(Name_Buffer (1 .. Name_Len));
-            end Get_String_Argument;
-
-            --------------------
-            -- Process_Casing --
-            --------------------
-
-            procedure Process_Casing (Arg : Node_Id) is
-               Expr : constant Node_Id := Expression (Arg);
-
-            begin
-               Check_Required_Identifier (Arg, Name_Casing);
-
-               if Nkind (Expr) = N_Identifier then
-                  if Chars (Expr) = Name_Lowercase then
-                     Cas := All_Lower_Case;
-                     return;
-                  elsif Chars (Expr) = Name_Uppercase then
-                     Cas := All_Upper_Case;
-                     return;
-                  elsif Chars (Expr) = Name_Mixedcase then
-                     Cas := Mixed_Case;
-                     return;
-                  end if;
-               end if;
-
-               Error_Msg_N
-                 ("Casing argument for pragma% must be " &
-                  "one of Mixedcase, Lowercase, Uppercase",
-                  Arg);
-            end Process_Casing;
-
-            -----------------------------
-            -- Process_Dot_Replacement --
-            -----------------------------
-
-            procedure Process_Dot_Replacement (Arg : Node_Id) is
-            begin
-               Check_Required_Identifier (Arg, Name_Dot_Replacement);
-               Dot := Get_String_Argument (Arg);
-            end Process_Dot_Replacement;
-
-         --  Start of processing for Source_File_Name and
-         --  Source_File_Name_Project pragmas.
-
-         begin
-
-            if Get_Pragma_Id (Pragma_Name) = Pragma_Source_File_Name then
-               if Project_File_In_Use = In_Use then
-                  Error_Msg
-                    ("pragma Source_File_Name cannot be used " &
-                     "with a project file", Pragma_Sloc);
-
-               else
-                  Project_File_In_Use := Not_In_Use;
-               end if;
-
-            else
-               if Project_File_In_Use = Not_In_Use then
-                  Error_Msg
-                    ("pragma Source_File_Name_Project should only be used " &
-                     "with a project file", Pragma_Sloc);
-
-               else
-                  Project_File_In_Use := In_Use;
-               end if;
-            end if;
-
-            --  We permit from 1 to 3 arguments
-
-            if Arg_Count not in 1 .. 3 then
-               Check_Arg_Count (1);
-            end if;
-
-            Expr1 := Expression (Arg1);
-
-            --  If first argument is identifier or selected component, then
-            --  we have the specific file case of the Source_File_Name pragma,
-            --  and the first argument is a unit name.
-
-            if Nkind (Expr1) = N_Identifier
-              or else
-                (Nkind (Expr1) = N_Selected_Component
-                  and then
-                 Nkind (Selector_Name (Expr1)) = N_Identifier)
-            then
-               if Nkind (Expr1) = N_Identifier
-                 and then Chars (Expr1) = Name_System
-               then
-                  Error_Msg_N
-                    ("pragma Source_File_Name may not be used for System",
-                     Arg1);
-                  return Error;
-               end if;
-
-               Check_Arg_Count (2);
-
-               Check_Optional_Identifier (Arg1, Name_Unit_Name);
-               Unam := Get_Unit_Name (Expr1);
-
-               Check_Arg_Is_String_Literal (Arg2);
-
-               if Chars (Arg2) = Name_Spec_File_Name then
-                  Set_File_Name (Get_Spec_Name (Unam), Get_Fname (Arg2));
-
-               elsif Chars (Arg2) = Name_Body_File_Name then
-                  Set_File_Name (Unam, Get_Fname (Arg2));
-
-               else
-                  Error_Msg_N
-                    ("pragma% argument has incorrect identifier", Arg2);
-                  return Pragma_Node;
-               end if;
-
-            --  If the first argument is not an identifier, then we must have
-            --  the pattern form of the pragma, and the first argument must be
-            --  the pattern string with an appropriate name.
-
-            else
-               if Chars (Arg1) = Name_Spec_File_Name then
-                  Typ := 's';
-
-               elsif Chars (Arg1) = Name_Body_File_Name then
-                  Typ := 'b';
-
-               elsif Chars (Arg1) = Name_Subunit_File_Name then
-                  Typ := 'u';
-
-               elsif Chars (Arg1) = Name_Unit_Name then
-                  Error_Msg_N
-                    ("Unit_Name parameter for pragma% must be an identifier",
-                     Arg1);
-                  raise Error_Resync;
-
-               else
-                  Error_Msg_N
-                    ("pragma% argument has incorrect identifier", Arg1);
-                  raise Error_Resync;
-               end if;
-
-               Pat := Get_String_Argument (Arg1);
-
-               --  Check pattern has exactly one asterisk
-
-               Nast := 0;
-               for J in Pat'Range loop
-                  if Pat (J) = '*' then
-                     Nast := Nast + 1;
-                  end if;
-               end loop;
-
-               if Nast /= 1 then
-                  Error_Msg_N
-                    ("file name pattern must have exactly one * character",
-                     Arg2);
-                  return Pragma_Node;
-               end if;
-
-               --  Set defaults for Casing and Dot_Separator parameters
-
-               Cas := All_Lower_Case;
-
-               Dot := new String'(".");
-
-               --  Process second and third arguments if present
-
-               if Arg_Count > 1 then
-                  if Chars (Arg2) = Name_Casing then
-                     Process_Casing (Arg2);
-
-                     if Arg_Count = 3 then
-                        Process_Dot_Replacement (Arg3);
-                     end if;
-
-                  else
-                     Process_Dot_Replacement (Arg2);
-
-                     if Arg_Count = 3 then
-                        Process_Casing (Arg3);
-                     end if;
-                  end if;
-               end if;
-
-               Set_File_Name_Pattern (Pat, Typ, Dot, Cas);
-            end if;
-         end Source_File_Name;
 
       -----------------------------
       -- Source_Reference (GNAT) --
@@ -752,86 +376,7 @@ begin
       --  This is processed by the parser since some of the style
       --  checks take place during source scanning and parsing.
 
-      when Pragma_Style_Checks => Style_Checks : declare
-         A  : Node_Id;
-         S  : String_Id;
-         C  : Char_Code;
-         OK : Boolean := True;
-
-      begin
-         --  Two argument case is only for semantics
-
-         if Arg_Count = 2 then
-            null;
-
-         else
-            Check_Arg_Count (1);
-            Check_No_Identifier (Arg1);
-            A := Expression (Arg1);
-
-            if Nkind (A) = N_String_Literal then
-               S   := Strval (A);
-
-               declare
-                  Slen    : constant Natural := Natural (String_Length (S));
-                  Options : String (1 .. Slen);
-                  J       : Natural;
-                  Ptr     : Natural;
-
-               begin
-                  J := 1;
-                  loop
-                     C := Get_String_Char (S, Int (J));
-
-                     if not In_Character_Range (C) then
-                        OK := False;
-                        Ptr := J;
-                        exit;
-
-                     else
-                        Options (J) := Get_Character (C);
-                     end if;
-
-                     if J = Slen then
-                        Set_Style_Check_Options (Options, OK, Ptr);
-                        exit;
-
-                     else
-                        J := J + 1;
-                     end if;
-                  end loop;
-
-                  if not OK then
-                     Error_Msg
-                       ("invalid style check option",
-                        Sloc (Expression (Arg1)) + Source_Ptr (Ptr));
-                     raise Error_Resync;
-                  end if;
-               end;
-
-            elsif Nkind (A) /= N_Identifier then
-               OK := False;
-
-            elsif Chars (A) = Name_All_Checks then
-               Stylesw.Set_Default_Style_Check_Options;
-
-            elsif Chars (A) = Name_On then
-               Style_Check := True;
-
-            elsif Chars (A) = Name_Off then
-               Style_Check := False;
-
-            else
-               OK := False;
-            end if;
-
-            if not OK then
-               Error_Msg ("incorrect argument for pragma%", Sloc (A));
-               raise Error_Resync;
-            end if;
-         end if;
-      end Style_Checks;
-
+      when Pragma_Style_Checks => null;
       ---------------------
       -- Warnings (GNAT) --
       ---------------------
@@ -862,25 +407,14 @@ begin
       --  For all other pragmas, checking and processing is handled
       --  entirely in Sem_Prag, and no further checking is done by Par.
 
-      when Pragma_AST_Entry                    |
-           Pragma_Annotate                     |
+      when Pragma_Annotate                     |
            Pragma_Assert                       |
-           Pragma_Asynchronous                 |
-           Pragma_Atomic                       |
-           Pragma_Atomic_Components            |
-           Pragma_Attach_Handler               |
            Pragma_Compile_Time_Warning         |
            Pragma_Convention_Identifier        |
-           Pragma_CPP_Class                    |
-           Pragma_CPP_Constructor              |
-           Pragma_CPP_Virtual                  |
-           Pragma_CPP_Vtable                   |
            Pragma_C_Pass_By_Copy               |
            Pragma_Comment                      |
            Pragma_Common_Object                |
-           Pragma_Complex_Representation       |
            Pragma_Component_Alignment          |
-           Pragma_Controlled                   |
            Pragma_Convention                   |
            Pragma_Discard_Names                |
            Pragma_Eliminate                    |
@@ -894,20 +428,15 @@ begin
            Pragma_Export_Function              |
            Pragma_Export_Object                |
            Pragma_Export_Procedure             |
-           Pragma_Export_Value                 |
-           Pragma_Export_Valued_Procedure      |
-           Pragma_Extend_System                |
            Pragma_External                     |
            Pragma_External_Name_Casing         |
            Pragma_Finalize_Storage_Only        |
            Pragma_Float_Representation         |
            Pragma_Ident                        |
            Pragma_Import                       |
-           Pragma_Import_Exception             |
            Pragma_Import_Function              |
            Pragma_Import_Object                |
            Pragma_Import_Procedure             |
-           Pragma_Import_Valued_Procedure      |
            Pragma_Initialize_Scalars           |
            Pragma_Inline                       |
            Pragma_Inline_Always                |
@@ -915,19 +444,11 @@ begin
            Pragma_Inspection_Point             |
            Pragma_Interface                    |
            Pragma_Interface_Name               |
-           Pragma_Interrupt_State              |
-           Pragma_Interrupt_Priority           |
            Pragma_Keep_Names                   |
-           Pragma_License                      |
            Pragma_Link_With                    |
            Pragma_Linker_Alias                 |
            Pragma_Linker_Options               |
-           Pragma_Linker_Section               |
-           Pragma_Locking_Policy               |
            Pragma_Long_Float                   |
-           Pragma_Machine_Attribute            |
-           Pragma_Main                         |
-           Pragma_Main_Storage                 |
            Pragma_Memory_Size                  |
            Pragma_No_Return                    |
            Pragma_Obsolescent                  |
@@ -940,41 +461,26 @@ begin
            Pragma_Polling                      |
            Pragma_Persistent_Data              |
            Pragma_Persistent_Object            |
-           Pragma_Preelaborate                 |
-           Pragma_Propagate_Exceptions         |
-           Pragma_Psect_Object                 |
            Pragma_Pure                         |
            Pragma_Pure_Function                |
-           Pragma_Queuing_Policy               |
            Pragma_Restrictions                 |
            Pragma_Restriction_Warnings         |
            Pragma_Restricted_Run_Time          |
            Pragma_Ravenscar                    |
-           Pragma_Reviewable                   |
-           Pragma_Share_Generic                |
-           Pragma_Shared                       |
-           Pragma_Shared_Passive               |
            Pragma_Storage_Size                 |
            Pragma_Storage_Unit                 |
-           Pragma_Stream_Convert               |
-           Pragma_Subtitle                     |
            Pragma_Suppress                     |
            Pragma_Suppress_All                 |
            Pragma_Suppress_Debug_Info          |
            Pragma_Suppress_Exception_Locations |
            Pragma_Suppress_Initialization      |
            Pragma_System_Name                  |
-           Pragma_Title                        |
            Pragma_Unchecked_Union              |
            Pragma_Unimplemented_Unit           |
-           Pragma_Universal_Data               |
            Pragma_Unreferenced                 |
-           Pragma_Unreserve_All_Interrupts     |
            Pragma_Unsuppress                   |
-           Pragma_Use_VADS_Size                |
            Pragma_Volatile                     |
            Pragma_Volatile_Components          |
-           Pragma_Weak_External                |
            Pragma_Validity_Checks              =>
          null;
 

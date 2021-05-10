@@ -27,35 +27,21 @@ with Namet; use Namet;
 
 with Artics.Strings_Stocks; use Artics.Strings_Stocks;
 
-with Reflex.Types; use Reflex.Types;
 with Reflex.Entities_Lists; use Reflex.Entities_Lists;
 
-package Reflex.Infos is
+package Reflex.Infos.Generators is
 
-   type Reflex_Infos_Record is tagged private;
-   type Reflex_Infos_Ptr is access all Reflex_Infos_Record;
-   type Reflex_Infos_Class_Ptr is access all Reflex_Infos_Record'Class;
+   type Generator_Infos_Record is Reflex_Infos_Record with private;
+   type Generator_Infos_Ptr is access all Generator_Infos_Record;
+   type Generator_Infos_Class_Ptr is access all Generator_Infos_Record'Class;
 
-   No_Reflex_Infos_Record : constant Reflex_Infos_Record;
+   No_Generator_Infos_Record : constant Generator_Infos_Record;
 
-   type Expr_With_Actions_Record is record
-      Decls           : List_Id;
-      Actions         : List_Id;
-      Replace_Point   : Node_Id;
-      Insertion_Point : Node_Id;
-   end record;
-
-   No_Expr_With_Actions_Record : constant Expr_With_Actions_Record :=
-     (Decls           => No_List,
-      Actions         => No_List,
-      Replace_Point   => Empty,
-      Insertion_Point => Empty);
-
-   procedure Initialize_Reflex_Infos;
+   procedure Initialize_Generator_Infos;
    --  Initialize the package
 
-   function New_Reflex_Infos return Reflex_Infos_Ptr;
-   function New_Reflex_Infos (Node : Node_Id) return Reflex_Infos_Ptr;
+   function New_Generator_Infos return Generator_Infos_Ptr;
+   function New_Generator_Infos (Node : Node_Id) return Reflex_Infos_Ptr;
 
    procedure Free_Reflex_Infos (This : in out Reflex_Infos_Ptr);
    procedure Free_Reflex_Infos (Node : Node_Id);
@@ -67,7 +53,7 @@ package Reflex.Infos is
      (Node  : Node_Or_Entity_Id;
       Infos : access Reflex_Infos_Record);
    --  The node is already expanded
-   
+
    function Is_Expanded (Node : Node_Id) return Boolean;
    procedure Set_Expanded
      (Node : Node_Id;
@@ -121,20 +107,7 @@ package Reflex.Infos is
    procedure Set_Is_Anonym
      (E : Entity_Id;
       V : Boolean);
-   
-   function Get_Vertex (N : Node_Id) return Vertex_Id;
-   procedure Set_Vertex 
-     (N : Node_Id;
-      V : Vertex_Id);
-   
-   function Get_Entity_Refs (E : Node_Id) return Reflex.Nodes_Lists.List;
-   procedure Set_Entity_Reference 
-     (N : Node_Id;
-      E : Node_Id);
-   procedure Remove_Entity_Reference 
-     (E : Node_Id;
-      N : Node_Id);
-   
+
 private
 
    type Reflex_Infos_Record is tagged record
@@ -161,8 +134,6 @@ private
 
       No_Generate : Boolean;
       
-      Vertex : Vertex_Id;
-      
       Ada_Real_Literal : String_Ptr;
       
       --  Emumaration Literals --
@@ -173,8 +144,6 @@ private
       Anonym : Boolean;
 
       Expr_With_Actions : Expr_With_Actions_Record;
-      
-      Entity_Refs : Reflex.Nodes_Lists.List;
    end record;
 
    No_Reflex_Infos_Record : constant Reflex_Infos_Record :=
@@ -186,12 +155,10 @@ private
         Generation_Pending    => False,
         Coverage_Pending      => False,
         Homonym_Done          => False,
-	Vertex                => No_Vertex,
 	No_Generate           => False,
 	Ada_Real_Literal      => null,
         Enum_Literal_Constant => Empty,
         Anonym                => False,
-        Expr_With_Actions     => No_Expr_With_Actions_Record,
-	Entity_Refs           => Reflex.Nodes_Lists.Empty_List);
+        Expr_With_Actions     => No_Expr_With_Actions_Record);
 
-end Reflex.Infos;
+end Reflex.Infos.Generators;

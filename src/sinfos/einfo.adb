@@ -112,7 +112,6 @@ package body Einfo is
    --    Scale_Value                     Uint15
    --    Storage_Size_Variable           Node15
    --    String_Literal_Low_Bound        Node15
-   --    Shared_Var_Read_Proc            Node15
 
    --    Access_Disp_Table               Node16
    --    Cloned_Subtype                  Node16
@@ -160,7 +159,6 @@ package body Einfo is
    --    Register_Exception_Call         Node20
    --    Scalar_Range                    Node20
 
-   --    Accept_Address                  Elist21
    --    Default_Expr_Function           Node21
    --    Discriminant_Constraint         Elist21
    --    Interface_Name                  Node21
@@ -169,13 +167,11 @@ package body Einfo is
 
    --    Associated_Storage_Pool         Node22
    --    Component_Size                  Uint22
-   --    Corresponding_Remote_Type       Node22
    --    Enumeration_Rep_Expr            Node22
    --    Exception_Code                  Uint22
    --    Original_Record_Component       Node22
    --    Private_View                    Node22
    --    Scope_Depth_Value               Uint22
-   --    Shared_Var_Assign_Proc          Node22
 
    --    Associated_Final_Chain          Node23
    --    CR_Discriminant                 Node23
@@ -257,10 +253,7 @@ package body Einfo is
    --    Is_Hidden                      Flag57
    --    Non_Binary_Modulus             Flag58
    --    Is_Preelaborated               Flag59
-   --    Is_Shared_Passive              Flag60
 
-   --    Is_Remote_Types                Flag61
-   --    Is_Remote_Call_Interface       Flag62
    --    Is_Character_Type              Flag63
    --    Is_Intrinsic_Subprogram        Flag64
    --    Has_Record_Rep_Clause          Flag65
@@ -273,20 +266,15 @@ package body Einfo is
    --    Has_Completion_In_Body         Flag71
    --    Has_Unknown_Discriminants      Flag72
    --    Is_Child_Unit                  Flag73
-   --    Is_CPP_Class                   Flag74
    --    Has_Non_Standard_Rep           Flag75
-   --    Is_Constructor                 Flag76
    --    Is_Thread_Body                 Flag77
    --    Is_Tag                         Flag78
-   --    Has_All_Calls_Remote           Flag79
    --    Is_Constr_Subt_For_U_Nominal   Flag80
 
    --    Is_Asynchronous                Flag81
    --    Has_Gigi_Rep_Item              Flag82
    --    Has_Machine_Radix_Clause       Flag83
    --    Machine_Radix_10               Flag84
-   --    Is_Atomic                      Flag85
-   --    Has_Atomic_Components          Flag86
    --    Has_Volatile_Components        Flag87
    --    Discard_Names                  Flag88
    --    Is_Interrupt_Handler           Flag89
@@ -373,7 +361,6 @@ package body Einfo is
    --    Debug_Info_Off                 Flag166
    --    Sec_Stack_Needed_For_Return    Flag167
    --    Materialize_Entity             Flag168
-   --    Function_Returns_With_DSP      Flag169
    --    Is_Known_Valid                 Flag170
 
    --    Is_Hidden_Open_Scope           Flag171
@@ -398,11 +385,6 @@ package body Einfo is
    --------------------------------
    -- Attribute Access Functions --
    --------------------------------
-
-   function Accept_Address (Id : E) return L is
-   begin
-      return Elist21 (Id);
-   end Accept_Address;
 
    function Access_Disp_Table (Id : E) return E is
    begin
@@ -438,7 +420,6 @@ package body Einfo is
                        or else Is_Formal (Id)
                        or else Ekind (Id) = E_Loop_Parameter
                        or else Ekind (Id) = E_Constant
-                       or else Ekind (Id) = E_Exception
                        or else Ekind (Id) = E_Variable);
       return Uint14 (Id);
    end Alignment;
@@ -706,8 +687,7 @@ package body Einfo is
    begin
       pragma Assert
         (Ekind (Id) = E_Class_Wide_Subtype               or else
-         Ekind (Id) = E_Access_Subprogram_Type           or else
-         Ekind (Id) = E_Exception_Type);
+         Ekind (Id) = E_Access_Subprogram_Type);
       return Node18 (Id);
    end Equivalent_Type;
 
@@ -715,12 +695,6 @@ package body Einfo is
    begin
       return Uint12 (Id);
    end Esize;
-
-   function Exception_Code (Id : E) return Uint is
-   begin
-      pragma Assert (Ekind (Id) = E_Exception);
-      return Uint22 (Id);
-   end Exception_Code;
 
    function Extra_Accessibility (Id : E) return E is
    begin
@@ -807,13 +781,6 @@ package body Einfo is
       return Node11 (Id);
    end Full_View;
 
-   function Function_Returns_With_DSP (Id : E) return B is
-   begin
-      pragma Assert
-        (Is_Subprogram (Id) or else Ekind (Id) = E_Subprogram_Type);
-      return Flag169 (Id);
-   end Function_Returns_With_DSP;
-
    function Generic_Homonym (Id : E) return E is
    begin
       pragma Assert (Ekind (Id) = E_Generic_Package);
@@ -839,16 +806,6 @@ package body Einfo is
    begin
       return Flag46 (Id);
    end Has_Alignment_Clause;
-
-   function Has_All_Calls_Remote (Id : E) return B is
-   begin
-      return Flag79 (Id);
-   end Has_All_Calls_Remote;
-
-   function Has_Atomic_Components (Id : E) return B is
-   begin
-      return Flag86 (Implementation_Base_Type (Id));
-   end Has_Atomic_Components;
 
    function Has_Biased_Representation (Id : E) return B is
    begin
@@ -1138,11 +1095,6 @@ package body Einfo is
       return Flag81 (Id);
    end Is_Asynchronous;
 
-   function Is_Atomic (Id : E) return B is
-   begin
-      return Flag85 (Id);
-   end Is_Atomic;
-
    function Is_Bit_Packed_Array (Id : E) return B is
    begin
       return Flag122 (Implementation_Base_Type (Id));
@@ -1191,11 +1143,6 @@ package body Einfo is
       return Flag12 (Id);
    end Is_Constrained;
 
-   function Is_Constructor (Id : E) return B is
-   begin
-      return Flag76 (Id);
-   end Is_Constructor;
-
    function Is_Controlled (Id : E) return B is
    begin
       return Flag42 (Base_Type (Id));
@@ -1206,11 +1153,6 @@ package body Einfo is
       pragma Assert (Is_Formal (Id));
       return Flag97 (Id);
    end Is_Controlling_Formal;
-
-   function Is_CPP_Class (Id : E) return B is
-   begin
-      return Flag74 (Id);
-   end Is_CPP_Class;
 
    function Is_Dispatching_Operation (Id : E) return B is
    begin
@@ -1424,25 +1366,10 @@ package body Einfo is
       return Flag44 (Id);
    end Is_Pure;
 
-   function Is_Remote_Call_Interface (Id : E) return B is
-   begin
-      return Flag62 (Id);
-   end Is_Remote_Call_Interface;
-
-   function Is_Remote_Types (Id : E) return B is
-   begin
-      return Flag61 (Id);
-   end Is_Remote_Types;
-
    function Is_Renaming_Of_Object (Id : E) return B is
    begin
       return Flag112 (Id);
    end Is_Renaming_Of_Object;
-
-   function Is_Shared_Passive (Id : E) return B is
-   begin
-      return Flag60 (Id);
-   end Is_Shared_Passive;
 
    function Is_Statically_Allocated (Id : E) return B is
    begin
@@ -1711,12 +1638,6 @@ package body Einfo is
       return Node10 (Id);
    end Referenced_Object;
 
-   function Register_Exception_Call (Id : E) return N is
-   begin
-      pragma Assert (Ekind (Id) = E_Exception);
-      return Node20 (Id);
-   end Register_Exception_Call;
-
    function Related_Array_Object (Id : E) return E is
    begin
       pragma Assert (Is_Array_Type (Id));
@@ -1793,18 +1714,6 @@ package body Einfo is
         (Ekind (Id) = E_Package or else Ekind (Id) = E_Generic_Package);
       return List14 (Id);
    end Shadow_Entities;
-
-   function Shared_Var_Assign_Proc (Id : E) return E is
-   begin
-      pragma Assert (Ekind (Id) = E_Variable);
-      return Node22 (Id);
-   end Shared_Var_Assign_Proc;
-
-   function Shared_Var_Read_Proc (Id : E) return E is
-   begin
-      pragma Assert (Ekind (Id) = E_Variable);
-      return Node15 (Id);
-   end Shared_Var_Read_Proc;
 
    function Size_Check_Code (Id : E) return N is
    begin
@@ -2068,11 +1977,6 @@ package body Einfo is
    -- Attribute Set Procedures --
    ------------------------------
 
-   procedure Set_Accept_Address (Id : E; V : L) is
-   begin
-      Set_Elist21 (Id, V);
-   end Set_Accept_Address;
-
    procedure Set_Access_Disp_Table (Id : E; V : E) is
    begin
       pragma Assert (Is_Tagged_Type (Id) and then Id = Base_Type (Id));
@@ -2129,7 +2033,6 @@ package body Einfo is
                        or else Is_Formal (Id)
                        or else Ekind (Id) = E_Loop_Parameter
                        or else Ekind (Id) = E_Constant
-                       or else Ekind (Id) = E_Exception
                        or else Ekind (Id) = E_Variable);
       Set_Uint14 (Id, V);
    end Set_Alignment;
@@ -2380,8 +2283,7 @@ package body Einfo is
       pragma Assert
         (Ekind (Id) = E_Class_Wide_Type                  or else
          Ekind (Id) = E_Class_Wide_Subtype               or else
-         Ekind (Id) = E_Access_Subprogram_Type           or else
-         Ekind (Id) = E_Exception_Type);
+         Ekind (Id) = E_Access_Subprogram_Type);
       Set_Node18 (Id, V);
    end Set_Equivalent_Type;
 
@@ -2389,12 +2291,6 @@ package body Einfo is
    begin
       Set_Uint12 (Id, V);
    end Set_Esize;
-
-   procedure Set_Exception_Code (Id : E; V : U) is
-   begin
-      pragma Assert (Ekind (Id) = E_Exception);
-      Set_Uint22 (Id, V);
-   end Set_Exception_Code;
 
    procedure Set_Extra_Accessibility (Id : E; V : E) is
    begin
@@ -2485,13 +2381,6 @@ package body Einfo is
       Set_Node11 (Id, V);
    end Set_Full_View;
 
-   procedure Set_Function_Returns_With_DSP (Id : E; V : B := True) is
-   begin
-      pragma Assert
-        (Is_Subprogram (Id) or else Ekind (Id) = E_Subprogram_Type);
-      Set_Flag169 (Id, V);
-   end Set_Function_Returns_With_DSP;
-
    procedure Set_Generic_Homonym (Id : E; V : E) is
    begin
       Set_Node11 (Id, V);
@@ -2517,17 +2406,6 @@ package body Einfo is
    begin
       Set_Flag46 (Id, V);
    end Set_Has_Alignment_Clause;
-
-   procedure Set_Has_All_Calls_Remote (Id : E; V : B := True) is
-   begin
-      Set_Flag79 (Id, V);
-   end Set_Has_All_Calls_Remote;
-
-   procedure Set_Has_Atomic_Components (Id : E; V : B := True) is
-   begin
-      pragma Assert (not Is_Type (Id) or else Base_Type (Id) = Id);
-      Set_Flag86 (Id, V);
-   end Set_Has_Atomic_Components;
 
    procedure Set_Has_Biased_Representation (Id : E; V : B := True) is
    begin
@@ -2826,11 +2704,6 @@ package body Einfo is
       Set_Flag81 (Id, V);
    end Set_Is_Asynchronous;
 
-   procedure Set_Is_Atomic (Id : E; V : B := True) is
-   begin
-      Set_Flag85 (Id, V);
-   end Set_Is_Atomic;
-
    procedure Set_Is_Bit_Packed_Array (Id : E; V : B := True) is
    begin
       pragma Assert ((not V)
@@ -2882,11 +2755,6 @@ package body Einfo is
       Set_Flag12 (Id, V);
    end Set_Is_Constrained;
 
-   procedure Set_Is_Constructor (Id : E; V : B := True) is
-   begin
-      Set_Flag76 (Id, V);
-   end Set_Is_Constructor;
-
    procedure Set_Is_Controlled (Id : E; V : B := True) is
    begin
       pragma Assert (Id = Base_Type (Id));
@@ -2898,11 +2766,6 @@ package body Einfo is
       pragma Assert (Is_Formal (Id));
       Set_Flag97 (Id, V);
    end Set_Is_Controlling_Formal;
-
-   procedure Set_Is_CPP_Class (Id : E; V : B := True) is
-   begin
-      Set_Flag74 (Id, V);
-   end Set_Is_CPP_Class;
 
    procedure Set_Is_Dispatching_Operation (Id : E; V : B := True) is
    begin
@@ -3115,31 +2978,15 @@ package body Einfo is
       Set_Flag44 (Id, V);
    end Set_Is_Pure;
 
-   procedure Set_Is_Remote_Call_Interface (Id : E; V : B := True) is
-   begin
-      Set_Flag62 (Id, V);
-   end Set_Is_Remote_Call_Interface;
-
-   procedure Set_Is_Remote_Types (Id : E; V : B := True) is
-   begin
-      Set_Flag61 (Id, V);
-   end Set_Is_Remote_Types;
-
    procedure Set_Is_Renaming_Of_Object (Id : E; V : B := True) is
    begin
       Set_Flag112 (Id, V);
    end Set_Is_Renaming_Of_Object;
 
-   procedure Set_Is_Shared_Passive (Id : E; V : B := True) is
-   begin
-      Set_Flag60 (Id, V);
-   end Set_Is_Shared_Passive;
-
    procedure Set_Is_Statically_Allocated (Id : E; V : B := True) is
    begin
       pragma Assert
-        (Ekind (Id) = E_Exception
-          or else Ekind (Id) = E_Variable
+        (Ekind (Id) = E_Variable
           or else Ekind (Id) = E_Constant
           or else Is_Type (Id)
           or else Ekind (Id) = E_Void);
@@ -3190,12 +3037,6 @@ package body Einfo is
       pragma Assert (Is_Child_Unit (Id));
       Set_Flag116 (Id, V);
    end Set_Is_Visible_Child_Unit;
-
-   procedure Set_Is_VMS_Exception (Id : E; V : B := True) is
-   begin
-      pragma Assert (Ekind (Id) = E_Exception);
-      Set_Flag133 (Id, V);
-   end Set_Is_VMS_Exception;
 
    procedure Set_Is_Volatile (Id : E; V : B := True) is
    begin
@@ -3406,12 +3247,6 @@ package body Einfo is
       Set_Node10 (Id, V);
    end Set_Referenced_Object;
 
-   procedure Set_Register_Exception_Call (Id : E; V : N) is
-   begin
-      pragma Assert (Ekind (Id) = E_Exception);
-      Set_Node20 (Id, V);
-   end Set_Register_Exception_Call;
-
    procedure Set_Related_Array_Object (Id : E; V : E) is
    begin
       pragma Assert (Is_Array_Type (Id));
@@ -3490,18 +3325,6 @@ package body Einfo is
         (Ekind (Id) = E_Package or else Ekind (Id) = E_Generic_Package);
       Set_List14 (Id, V);
    end Set_Shadow_Entities;
-
-   procedure Set_Shared_Var_Assign_Proc (Id : E; V : E) is
-   begin
-      pragma Assert (Ekind (Id) = E_Variable);
-      Set_Node22 (Id, V);
-   end Set_Shared_Var_Assign_Proc;
-
-   procedure Set_Shared_Var_Read_Proc (Id : E; V : E) is
-   begin
-      pragma Assert (Ekind (Id) = E_Variable);
-      Set_Node15 (Id, V);
-   end Set_Shared_Var_Read_Proc;
 
    procedure Set_Size_Check_Code (Id : E; V : N) is
    begin
@@ -4360,36 +4183,13 @@ package body Einfo is
 
    function Get_Rep_Pragma (E : Entity_Id; Nam : Name_Id) return Node_Id is
       N   : Node_Id;
-      Typ : Entity_Id;
 
    begin
       N := First_Rep_Item (E);
 
       while Present (N) loop
          if Nkind (N) = N_Pragma and then Chars (N) = Nam then
-
-            if Nam = Name_Stream_Convert then
-
-               --  For tagged types this pragma is not inherited, so we
-               --  must verify that it is defined for the given type and
-               --  not an ancestor.
-
-               Typ := Entity (Expression
-                       (First (Pragma_Argument_Associations (N))));
-
-               if not Is_Tagged_Type (E)
-                 or else E = Typ
-                 or else (Is_Private_Type (Typ)
-                           and then E = Full_View (Typ))
-               then
-                  return N;
-               else
-                  Next_Rep_Item (N);
-               end if;
-
-            else
-               return N;
-            end if;
+            return N;
          else
             Next_Rep_Item (N);
          end if;
@@ -4653,7 +4453,7 @@ package body Einfo is
       --  Identifiers, operator symbols, expanded names are entity names
 
       return Kind = N_Identifier
-        or else Kind = N_Operator_Symbol
+--        or else Kind = N_Operator_Symbol
         or else Kind = N_Expanded_Name
 
       --  Attribute references are entity names if they refer to an entity.
@@ -5266,11 +5066,8 @@ package body Einfo is
       W ("Elaboration_Entity_Required",   Flag174 (Id));
       W ("Finalize_Storage_Only",         Flag158 (Id));
       W ("From_With_Type",                Flag159 (Id));
-      W ("Function_Returns_With_DSP",     Flag169 (Id));
       W ("Has_Aliased_Components",        Flag135 (Id));
       W ("Has_Alignment_Clause",          Flag46  (Id));
-      W ("Has_All_Calls_Remote",          Flag79  (Id));
-      W ("Has_Atomic_Components",         Flag86  (Id));
       W ("Has_Biased_Representation",     Flag139 (Id));
       W ("Has_Completion",                Flag26  (Id));
       W ("Has_Completion_In_Body",        Flag71  (Id));
@@ -5321,9 +5118,7 @@ package body Einfo is
       W ("Is_Access_Constant",            Flag69  (Id));
       W ("Is_Aliased",                    Flag15  (Id));
       W ("Is_Asynchronous",               Flag81  (Id));
-      W ("Is_Atomic",                     Flag85  (Id));
       W ("Is_Bit_Packed_Array",           Flag122 (Id));
-      W ("Is_CPP_Class",                  Flag74  (Id));
       W ("Is_Called",                     Flag102 (Id));
       W ("Is_Character_Type",             Flag63  (Id));
       W ("Is_Child_Unit",                 Flag73  (Id));
@@ -5333,7 +5128,6 @@ package body Einfo is
       W ("Is_Constr_Subt_For_UN_Aliased", Flag141 (Id));
       W ("Is_Constr_Subt_For_U_Nominal",  Flag80  (Id));
       W ("Is_Constrained",                Flag12  (Id));
-      W ("Is_Constructor",                Flag76  (Id));
       W ("Is_Controlled",                 Flag42  (Id));
       W ("Is_Controlling_Formal",         Flag97  (Id));
       W ("Is_Dispatching_Operation",      Flag6   (Id));
@@ -5376,7 +5170,6 @@ package body Einfo is
       W ("Is_Remote_Call_Interface",      Flag62  (Id));
       W ("Is_Remote_Types",               Flag61  (Id));
       W ("Is_Renaming_Of_Object",         Flag112 (Id));
-      W ("Is_Shared_Passive",             Flag60  (Id));
       W ("Is_Statically_Allocated",       Flag28  (Id));
       W ("Is_Tag",                        Flag78  (Id));
       W ("Is_Tagged_Type",                Flag55  (Id));
@@ -5823,9 +5616,6 @@ package body Einfo is
          when E_String_Literal_Subtype                   =>
             Write_Str ("String_Literal_Low_Bound");
 
-         when E_Variable                                 =>
-            Write_Str ("Shared_Var_Read_Proc");
-
          when others                                     =>
             Write_Str ("Field15??");
       end case;
@@ -5946,16 +5736,14 @@ package body Einfo is
             Write_Str ("Corresponding_Concurrent_Type");
 
          when E_Class_Wide_Subtype                       |
-              E_Access_Subprogram_Type                   |
-              E_Exception_Type                           =>
+              E_Access_Subprogram_Type                   =>
             Write_Str ("Equivalent_Type");
 
          when E_Constant                                 |
               E_Variable                                 =>
             Write_Str ("Renamed_Object");
 
-         when E_Exception                                |
-              E_Package                                  |
+         when E_Package                                  |
               E_Generic_Function                         |
               E_Generic_Procedure                        |
               E_Generic_Package                          =>
@@ -6054,9 +5842,6 @@ package body Einfo is
          when Scalar_Kind                                =>
             Write_Str ("Scalar_Range");
 
-         when E_Exception                                =>
-            Write_Str ("Register_Exception_Call");
-
          when others                                     =>
             Write_Str ("Field20??");
       end case;
@@ -6070,7 +5855,6 @@ package body Einfo is
    begin
       case Ekind (Id) is
          when E_Constant                                 |
-              E_Exception                                |
               E_Function                                 |
               E_Generic_Function                         |
               E_Procedure                                |
@@ -6115,9 +5899,6 @@ package body Einfo is
          when E_Enumeration_Literal                      =>
             Write_Str ("Enumeration_Rep_Expr");
 
-         when E_Exception                                =>
-            Write_Str ("Exception_Code");
-
          when Formal_Kind                                =>
             Write_Str ("Protected_Formal");
 
@@ -6141,9 +5922,6 @@ package body Einfo is
               E_Private_Type                             |
               E_Private_Subtype                          =>
             Write_Str ("Private_View");
-
-         when E_Variable                                 =>
-            Write_Str ("Shared_Var_Assign_Proc");
 
          when others                                     =>
             Write_Str ("Field22??");

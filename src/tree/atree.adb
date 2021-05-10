@@ -816,8 +816,8 @@ package body Atree is
             when N_Defining_Character_Literal =>
                New_Ent := New_Entity (N_Defining_Character_Literal, Sloc (E));
 
-            when N_Defining_Operator_Symbol =>
-               New_Ent := New_Entity (N_Defining_Operator_Symbol, Sloc (E));
+--              when N_Defining_Operator_Symbol =>
+--                 New_Ent := New_Entity (N_Defining_Operator_Symbol, Sloc (E));
          end case;
 
          Set_Chars (New_Ent, Chars (E));

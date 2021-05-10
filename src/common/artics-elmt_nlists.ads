@@ -63,10 +63,9 @@ package Artics.Elmt_Nlists is
 
    List_Low_Bound  : constant List_Id := List_Id'First;
    List_High_Bound : constant List_Id := List_Id'last;
-   No_List         : constant List_Id := List_Low_Bound;
-   Error_List      : constant List_Id := List_Low_Bound;
+   No_List_Id      : constant List_Id := List_Low_Bound;
+   Error_List_Id   : constant List_Id := List_Low_Bound;
    First_List_Id   : constant List_Id := List_Low_Bound;
-
 
     function Last_List_Id return List_Id;
     pragma Inline (Last_List_Id);
@@ -81,7 +80,7 @@ package Artics.Elmt_Nlists is
     --  Number of currently allocated lists
 
     function Is_Valid_Elmt (Obj : Elmt_Id) return Boolean;
-    -- Return True if Obj in Elmts Table range
+    --  Return True if Obj in Elmts Table range
 
     function New_Elmt return Elmt_Id;
     --  Creates a new empty elmt in Elmts table and return it's Object Id.
@@ -92,7 +91,9 @@ package Artics.Elmt_Nlists is
     procedure Delete_Elmt (Obj : Elmt_Id);
     --  Delete elemt referenced by Object Id Obj.
 
-    procedure Put_Elmt (Elmt : Elmt_T; Obj : Elmt_Id);
+    procedure Put_Elmt
+      (Elmt : Elmt_T; 
+       Obj  : Elmt_Id);
     --  Put Elmt in position Obj in table Elmts.
 
     function Get_Elmt (Obj : Elmt_Id) return Elmt_T;
@@ -107,10 +108,10 @@ package Artics.Elmt_Nlists is
 
     function New_List return List_Id;
     --  Creates a new empty object list. Typically this is used to initialize
-    --  a field in some other object which points to a object list where the list
-    --  is then subsequently filled in using Append calls.
+    --  a field in some other object which points to a object list where the 
+    --  list is then subsequently filled in using Append calls.
 
-    function New_List (Obj  : Elmt_Id) return List_Id;
+    function New_List (Obj : Elmt_Id) return List_Id;
     --  Build a new list initially containing the given object
 
     function New_List_Copy (List : List_Id) return List_Id;
@@ -125,8 +126,8 @@ package Artics.Elmt_Nlists is
 
     function First (List : List_Id) return Elmt_Id;
     pragma Inline (First);
-    --  Obtains the first element of the given object list or, if the object list
-    --  has no items or is equal to No_List, then Empty is returned.
+    --  Obtains the first element of the given object list or, if the object 
+    --  list has no items or is equal to No_List, then Empty is returned.
 
     function Last (List : List_Id) return Elmt_Id;
     pragma Inline (Last);
@@ -143,9 +144,9 @@ package Artics.Elmt_Nlists is
 
     function Next (Obj : Elmt_Id) return Elmt_Id;
     pragma Inline (Next);
-    --  This function returns the next object on an object list, or Empty if object is
-    --  the last element of the object list. The argument must be a member of a
-    --  object list.
+    --  This function returns the next object on an object list, or Empty if 
+    --  object is the last element of the object list. The argument must be a 
+    --  member of a object list.
 
     procedure Next (Obj : in out Elmt_Id);
     pragma Inline (Next);
@@ -154,13 +155,16 @@ package Artics.Elmt_Nlists is
 
     function Prev (Obj : Elmt_Id) return Elmt_Id;
     pragma Inline (Prev);
-    --  This function returns the previous object on an object list list, or Empty if
-    --  Obj is the first element of the object list. The argument must be a
-    --  member of an object list. Note that the implementation does not maintain
-    --  back pointers, so this function potentially requires traversal of the
-    --  entire list, or more accurately of the part of the list preceding Obj.
+    --  This function returns the previous object on an object list list, or 
+    --  Empty if Obj is the first element of the object list. The argument 
+    --  must be a member of an object list. Note that the implementation does 
+    --  not maintain back pointers, so this function potentially requires 
+    --  traversal of the entire list, or more accurately of the part of the
+    --  list preceding Obj.
 
-    function Pick (List : List_Id; Index : Pos) return Elmt_Id;
+    function Pick
+      (List  : List_Id; 
+       Index : Pos) return Elmt_Id;
     --  Given a list, picks out the Index'th entry (1 = first entry). The
     --  caller must ensure that Index is in range.
 
@@ -171,66 +175,81 @@ package Artics.Elmt_Nlists is
 
     function Is_Empty_List (List : List_Id) return Boolean;
     pragma Inline (Is_Empty_List);
-    --  This function determines if a given list id references an object list that
-    --  contains no items. No_List is a not a legitimate argument.
+    --  This function determines if a given list id references an object list 
+    --  that contains no items. No_List is a not a legitimate argument.
 
     function Is_Non_Empty_List (List : List_Id) return Boolean;
     pragma Inline (Is_Non_Empty_List);
-    --  This function determines if a given list id references an object list that
-    --  contains at least one item. No_List as an argument returns False.
+    --  This function determines if a given list id references an object list 
+    --  that contains at least one item. No_List as an argument returns False.
 
     function Is_List_Member (Obj : Elmt_Id) return Boolean;
     pragma Inline (Is_List_Member);
-    --  This function determines if a given object is a member of an object list.
-    --  It is an error for Obj to be Empty, or to be an object list.
+    --  This function determines if a given object is a member of an object 
+    --  list. It is an error for Obj to be Empty, or to be an object list.
 
     function List_Containing (Obj : Elmt_Id) return List_Id;
     pragma Inline (List_Containing);
     --  This function provides a pointer to the object list containing Obj.
     --  Obj must be a member of an object list.
 
-    procedure Append (Obj  : Elmt_Id;
-                      To   : List_Id);
+    procedure Append
+      (Obj  : Elmt_Id;
+       To   : List_Id);
     --  Appends Obj at the end of object list To. Obj must be a non-empty object
     --  that is not already a member of an object list, and To must be an
     --  object list. An attempt to append an error object is ignored without
     --  complaint and the list is unchanged.
 
-    procedure Append_To (To   : List_Id;
-                         Obj  : Elmt_Id);
+    procedure Append_To
+      (To   : List_Id;
+       Obj  : Elmt_Id);
     pragma Inline (Append_To);
     --  Like Append, but arguments are the other way round
 
-    procedure Append_List (List : List_Id; To : List_Id);
+    procedure Append_List
+      (List : List_Id; 
+       To   : List_Id);
     --  Appends object list List to the end of object list To. On return,
     --  List is reset to be empty.
 
-    procedure Append_List_To (To : List_Id; List : List_Id);
+    procedure Append_List_To
+      (To   : List_Id; 
+       List : List_Id);
     pragma Inline (Append_List_To);
     --  Like Append_List, but arguments are the other way round
 
-    procedure Insert_After (After : Elmt_Id;
-                            Obj   : Elmt_Id);
+    procedure Insert_After
+      (After : Elmt_Id;
+       Obj   : Elmt_Id);
     --  Insert Obj, which must be a non-empty object that is not already a
-    --  member of an object list, immediately past object After, which must be an
-    --  object that is currently a member of an object list. An attempt to insert
-    --  an error object is ignored without complaint (and the list is unchanged).
+    --  member of an object list, immediately past object After, which must be 
+    --  an object that is currently a member of an object list. An attempt to 
+    --  insert an error object is ignored without complaint (and the list is 
+    --  unchanged).
 
-    procedure Insert_List_After (After : Elmt_Id; List : List_Id);
+    procedure Insert_List_After
+      (After : Elmt_Id; 
+       List  : List_Id);
     --  Inserts the entire contents of object list List immediately after object
-    --  After, which must be a member of an object list. On return, the object list
-    --  List is reset to be the empty object list.
+    --  After, which must be a member of an object list. On return, the object 
+    --  list List is reset to be the empty object list.
 
-    procedure Insert_Before (Before : Elmt_Id; Obj : Elmt_Id);
+    procedure Insert_Before
+      (Before : Elmt_Id; 
+       Obj    : Elmt_Id);
     --  Insert Obj, which must be a non-empty object that is not already a
-    --  member of an object list, immediately before Before, which must be an object
-    --  that is currently a member of an object list. An attempt to insert an
-    --  error object is ignored without complaint (and the list is unchanged).
+    --  member of an object list, immediately before Before, which must be an 
+    --  object that is currently a member of an object list. An attempt to 
+    --  insert an error object is ignored without complaint (and the list is 
+    --  unchanged).
 
-    procedure Insert_List_Before (Before : Elmt_Id; List : List_Id);
-    --  Inserts the entire contents of object list List immediately before object
-    --  Before, which must be a member of an object list. On return, the object list
-    --  List is reset to be the empty object list.
+    procedure Insert_List_Before
+      (Before : Elmt_Id; 
+       List   : List_Id);
+    --  Inserts the entire contents of object list List immediately before 
+    --  object Before, which must be a member of an object list. On return, the 
+    --  object list List is reset to be the empty object list.
 
    function Position
      (List  : in List_Id;
@@ -239,16 +258,18 @@ package Artics.Elmt_Nlists is
    -- return 0 if not found
    -- return 1 if first element...
 
-    procedure Prepend (Obj  : Elmt_Id;
-                       To   : List_Id);
+   procedure Prepend
+     (Obj  : Elmt_Id;
+      To   : List_Id);
     pragma Inline (Prepend);
     --  Prepends Obj at the start of object list To. Obj must be a non-empty
     --  object that is not already a member of an object list, and To must be an
     --  object list. An attempt to prepend an error object is ignored without
     --  complaint and the list is unchanged.
 
-    procedure Prepend_To (To   : List_Id;
-                          Obj  : Elmt_Id);
+    procedure Prepend_To
+      (To   : List_Id;
+       Obj  : Elmt_Id);
     pragma Inline (Prepend_To);
     --  Like Prepend, but arguments are the other way round
 
@@ -257,9 +278,9 @@ package Artics.Elmt_Nlists is
     --  from this object list. The contents of Obj are not otherwise affected.
 
     function Remove_Head (List : List_Id) return Elmt_Id;
-    --  Removes the head element of an object list, and returns the object (whose
-    --  contents are not otherwise affected) as the result. If the object list
-    --  is empty, then Empty is returned.
+    --  Removes the head element of an object list, and returns the object 
+    --  (whose contents are not otherwise affected) as the result. If the 
+    --  object list is empty, then Empty is returned.
 
     function Remove_Next (Obj : Elmt_Id) return Elmt_Id;
     pragma Inline (Remove_Next);
@@ -277,11 +298,13 @@ package Artics.Elmt_Nlists is
 
     function Parent (List : List_Id) return Elmt_Id;
     pragma Inline (Parent);
-    --  Object lists may have a parent in the same way as an object. The function
-    --  accesses the Parent value, which is either Empty when a list header
-    --  is first created, or the value that has been set by Set_Parent.
+    --  Object lists may have a parent in the same way as an object. The 
+    --  function accesses the Parent value, which is either Empty when a list 
+    --  header is first created, or the value that has been set by Set_Parent.
 
-    procedure Set_Parent (List : List_Id; Obj : Elmt_Id);
+    procedure Set_Parent
+      (List : List_Id; 
+       Obj  : Elmt_Id);
     pragma Inline (Set_Parent);
     --  Sets the parent field of the given list to reference the given object
 

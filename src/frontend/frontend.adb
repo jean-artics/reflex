@@ -36,14 +36,14 @@ with Hostparm; use Hostparm;
 with Inline;   use Inline;
 with Lib;      use Lib;
 with Lib.Load; use Lib.Load;
-with Live;     use Live;
+--with Live;     use Live;
 with Namet;    use Namet;
 with Nlists;   use Nlists;
 with Opt;      use Opt;
 with Osint;
 with Output;   use Output;
 with Par;
-with Prepcomp;
+--with Prepcomp;
 with Rtsfind;
 with Sprint;
 with Scn;      use Scn;
@@ -86,21 +86,9 @@ begin
 
    --  Check possible symbol definitions specified by -gnateD switches
 
-   Prepcomp.Process_Command_Line_Symbol_Definitions;
+   --Prepcomp.Process_Command_Line_Symbol_Definitions;
 
    --  If -gnatep= was specified, parse the preprocessing data file
-
-   if Preprocessing_Data_File /= null then
-      Name_Len := Preprocessing_Data_File'Length;
-      Name_Buffer (1 .. Name_Len) := Preprocessing_Data_File.all;
-      Prepcomp.Parse_Preprocessing_Data_File (Name_Find);
-
-   --  Otherwise, check if there were preprocessing symbols on the command
-   --  line and set preprocessing if there are.
-
-   else
-      Prepcomp.Check_Symbols;
-   end if;
 
    --  Now that the preprocessing situation is established, we are able to
    --  load the main source (this is no longer done by Lib.Load.Initalize).
@@ -177,9 +165,9 @@ begin
       then
          Prag := First (Config_Pragmas);
          while Present (Prag) loop
-            if not Delay_Config_Pragma_Analyze (Prag) then
+--            if not Delay_Config_Pragma_Analyze (Prag) then
                Analyze_Pragma (Prag);
-            end if;
+--            end if;
 
             Next (Prag);
          end loop;
@@ -264,9 +252,9 @@ begin
       begin
          Prag := First (Config_Pragmas);
          while Present (Prag) loop
-            if Delay_Config_Pragma_Analyze (Prag) then
+--            if Delay_Config_Pragma_Analyze (Prag) then
                Analyze_Pragma (Prag);
-            end if;
+--            end if;
 
             Next (Prag);
          end loop;
@@ -304,9 +292,9 @@ begin
             --  Remove entities from program that do not have any
             --  execution time references.
 
-            if Debug_Flag_UU then
-               Collect_Garbage_Entities;
-            end if;
+--              if Debug_Flag_UU then
+--                 Collect_Garbage_Entities;
+--              end if;
 
             --Check_Elab_Calls;
 
@@ -318,9 +306,9 @@ begin
 
          --  List library units if requested
 
-         if List_Units then
-            Lib.List;
-         end if;
+--           if List_Units then
+--              Lib.List;
+--           end if;
 
          --  Output any messages for unreferenced entities
 

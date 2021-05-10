@@ -36,7 +36,7 @@ with Casing;   use Casing;
 with Opt;      use Opt;
 with Osint;    use Osint;
 with Sinput.L; use Sinput.L;
-with Stylesw;  use Stylesw;
+--with Stylesw;  use Stylesw;
 with Validsw;  use Validsw;
 
 with GNAT.Spelling_Checker; use GNAT.Spelling_Checker;

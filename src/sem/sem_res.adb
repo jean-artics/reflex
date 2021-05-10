@@ -29,14 +29,10 @@ with Debug;    use Debug;
 with Debug_A;  use Debug_A;
 with Einfo;    use Einfo;
 with Errout;   use Errout;
---  with Expander; use Expander;
---  with Exp_Ch7;  use Exp_Ch7;
---  with Exp_Tss;  use Exp_Tss;
 with Exp_Util; use Exp_Util;
 with Freeze;   use Freeze;
 with Itypes;   use Itypes;
 with Lib;      use Lib;
-with Lib.Xref; use Lib.Xref;
 with Namet;    use Namet;
 with Nmake;    use Nmake;
 with Nlists;   use Nlists;
@@ -52,8 +48,6 @@ with Sem_Ch4;  use Sem_Ch4;
 with Sem_Ch6;  use Sem_Ch6;
 with Sem_Ch8;  use Sem_Ch8;
 with Sem_Disp; use Sem_Disp;
--- with Sem_Dist; use Sem_Dist;
---with Sem_Elab; use Sem_Elab;
 with Sem_Eval; use Sem_Eval;
 with Sem_Intr; use Sem_Intr;
 with Sem_Util; use Sem_Util;
@@ -87,11 +81,6 @@ package body Sem_Res is
    --  Give list of candidate interpretations when a character literal cannot
    --  be resolved.
 
-   procedure Check_Direct_Boolean_Op (N : Node_Id);
-   --  N is a binary operator node which may possibly operate on Boolean
-   --  operands. If the operator does have Boolean operands, then a call is
-   --  made to check the restriction No_Direct_Boolean_Operators.
-
    procedure Check_For_Visible_Operator (N : Node_Id; T : Entity_Id);
    --  Given a node for an operator associated with type T, check that
    --  the operator is visible. Operators all of whose operands are
@@ -103,13 +92,6 @@ package body Sem_Res is
    --  subprogram being called, determines whether it is a detectable case of
    --  an infinite recursion, and if so, outputs appropriate messages. Returns
    --  True if an infinite recursion is detected, and False otherwise.
-
-   procedure Check_Initialization_Call (N : Entity_Id; Nam : Entity_Id);
-   --  If the type of the object being initialized uses the secondary stack
-   --  directly or indirectly, create a transient scope for the call to the
-   --  init proc. This is because we do not create transient scopes for the
-   --  initialization of individual components within the init proc itself.
-   --  Could be optimized away perhaps?
 
    function Is_Predefined_Op (Nam : Entity_Id) return Boolean;
    --  Utility to check whether the name in the call is a predefined
@@ -166,14 +148,6 @@ package body Sem_Res is
 
    procedure Resolve_Intrinsic_Unary_Operator (N : Node_Id; Typ : Entity_Id);
    --  Ditto, for unary operators (only arithmetic ones).
-
-   procedure Rewrite_Operator_As_Call (N : Node_Id; Nam : Entity_Id);
-   --  If an operator node resolves to a call to a user-defined operator,
-   --  rewrite the node as a function call.
-
-   procedure Rewrite_Renamed_Operator (N : Node_Id; Op : Entity_Id);
-   --  An operator can rename another, e.g. in  an instantiation. In that
-   --  case, the proper operator node must be constructed.
 
    procedure Set_String_Literal_Subtype (N : Node_Id; Typ : Entity_Id);
    --  The String_Literal_Subtype is built for all strings that are not
@@ -315,17 +289,6 @@ package body Sem_Res is
       end if;
    end Analyze_And_Resolve;
 
-   -----------------------------
-   -- Check_Direct_Boolean_Op --
-   -----------------------------
-
-   procedure Check_Direct_Boolean_Op (N : Node_Id) is
-   begin
-      if Root_Type (Etype (Left_Opnd (N))) = Standard_Boolean then
-         Check_Restriction (No_Direct_Boolean_Operators, N);
-      end if;
-   end Check_Direct_Boolean_Op;
-
    --------------------------------
    -- Check_For_Visible_Operator --
    --------------------------------
@@ -424,11 +387,7 @@ package body Sem_Res is
               and then Same_Argument_List
             then
                exit when not Is_List_Member (Parent (N))
-                 or else (Nkind (Prev (Parent (N))) /= N_Raise_Statement
-                            and then
-                          (Nkind (Prev (Parent (N))) not in N_Raise_xxx_Error
-                             or else
-                           Present (Condition (Prev (Parent (N))))));
+                 or else (Present (Condition (Prev (Parent (N)))));
             end if;
 
             return False;
@@ -443,15 +402,6 @@ package body Sem_Res is
 
       return True;
    end Check_Infinite_Recursion;
-
-   -------------------------------
-   -- Check_Initialization_Call --
-   -------------------------------
-
-   procedure Check_Initialization_Call (N : Entity_Id; Nam : Entity_Id) is
-   begin
-      null;
-   end Check_Initialization_Call;
 
    ------------------------------
    -- Check_Parameterless_Call --
@@ -929,7 +879,6 @@ package body Sem_Res is
 
                if Nkind (N) in N_Op then
                   Set_Entity (N, Seen);
-                  Generate_Reference (Seen, N);
 
                elsif Nkind (N) = N_Character_Literal then
                   Set_Etype (N, Expr_Type);
@@ -956,19 +905,16 @@ package body Sem_Res is
 
                elsif (Nkind (N) = N_Procedure_Call_Statement
                        or else Nkind (N) = N_Function_Call)
-                 and then (Is_Entity_Name (Name (N))
-                            or else Nkind (Name (N)) = N_Operator_Symbol)
+                 and then (Is_Entity_Name (Name (N)))
                then
                   Set_Etype  (Name (N), Expr_Type);
                   Set_Entity (Name (N), Seen);
-                  Generate_Reference (Seen, Name (N));
 
                elsif Nkind (N) = N_Function_Call
                  and then Nkind (Name (N)) = N_Selected_Component
                then
                   Set_Etype (Name (N), Expr_Type);
                   Set_Entity (Selector_Name (Name (N)), Seen);
-                  Generate_Reference (Seen, Selector_Name (Name (N)));
 
                --  For all other cases, just set the type of the Name
 
@@ -1202,28 +1148,6 @@ package body Sem_Res is
       --  Here we have an acceptable interpretation for the context
 
       else
-         --  A user-defined operator is tranformed into a function call at
-         --  this point, so that further processing knows that operators are
-         --  really operators (i.e. are predefined operators). User-defined
-         --  operators that are intrinsic are just renamings of the predefined
-         --  ones, and need not be turned into calls either, but if they rename
-         --  a different operator, we must transform the node accordingly.
-         --  Instantiations of Unchecked_Conversion are intrinsic but are
-         --  treated as functions, even if given an operator designator.
-
-         if Nkind (N) in N_Op
-           and then Present (Entity (N))
-           and then Ekind (Entity (N)) /= E_Operator
-         then
-
-            if not Is_Predefined_Op (Entity (N)) then
-               Rewrite_Operator_As_Call (N, Entity (N));
-
-            elsif Present (Alias (Entity (N))) then
-               Rewrite_Renamed_Operator (N, Alias (Entity (N)));
-            end if;
-         end if;
-
          --  Propagate type information and normalize tree for various
          --  predefined operations. If the context only imposes a class of
          --  types, rather than a specific type, propagate the actual type
@@ -1322,14 +1246,11 @@ package body Sem_Res is
             when N_Procedure_Call_Statement
                              => Resolve_Call                     (N, Ctx_Type);
 
-            when N_Operator_Symbol
-                             => Resolve_Operator_Symbol          (N, Ctx_Type);
+--              when N_Operator_Symbol
+--                               => Resolve_Operator_Symbol          (N, Ctx_Type);
 
             when N_Qualified_Expression
                              => Resolve_Qualified_Expression     (N, Ctx_Type);
-
-            when N_Raise_xxx_Error
-                             => Set_Etype (N, Ctx_Type);
 
             when N_Range     => Resolve_Range                    (N, Ctx_Type);
 
@@ -1541,13 +1462,6 @@ package body Sem_Res is
          --  silently replace it with an N_Raise_Constraint_Error node,
          --  since we already gave the warning on the subprogram spec.
 
-         if Raises_Constraint_Error (Actval) then
-            Rewrite (Actval,
-              Make_Raise_Constraint_Error (Loc,
-                Reason => CE_Range_Check_Failed));
-            Set_Raises_Constraint_Error (Actval);
-            Set_Etype (Actval, Etype (F));
-         end if;
 
          Assoc :=
            Make_Parameter_Association (Loc,
@@ -1805,14 +1719,7 @@ null;              end if;
             if Is_By_Reference_Type (Etype (F))
               and then Comes_From_Source (N)
             then
-               if Is_Atomic_Object (A)
-                 and then not Is_Atomic (Etype (F))
-               then
-                  Error_Msg_N
-                    ("cannot pass atomic argument to non-atomic formal",
-                     N);
-
-               elsif Is_Volatile_Object (A)
+               if Is_Volatile_Object (A)
                  and then not Is_Volatile (Etype (F))
                then
                   Error_Msg_N
@@ -1826,8 +1733,6 @@ null;              end if;
 
             if Is_Controlling_Formal (F) then
                Set_Is_Controlling_Actual (A);
-            elsif Nkind (A) = N_Explicit_Dereference then
-               Validate_Remote_Access_To_Class_Wide_Type (A);
             end if;
 
             if (Is_Class_Wide_Type (A_Typ) or else Is_Dynamically_Tagged (A))
@@ -1873,9 +1778,7 @@ null;              end if;
 
             if Nkind (Parent (A)) = N_Parameter_Association then
                Set_Entity (Selector_Name (Parent (A)), F);
-               Generate_Reference (F, Selector_Name (Parent (A)));
                Set_Etype (Selector_Name (Parent (A)), F_Typ);
-               Generate_Reference (F_Typ, N, ' ');
             end if;
 
             Prev := A;
@@ -2168,7 +2071,6 @@ null;              end if;
          Set_Operand_Type (R);
       end if;
 
-      Generate_Operator_Reference (N, Typ);
       Eval_Arithmetic_Op (N);
 
       --  Set overflow and division checking bit. Much cleverer code needed
@@ -2281,8 +2183,7 @@ null;              end if;
 
       elsif not (Is_Type (Entity (Subp))) then
          Nam := Entity (Subp);
-         Set_Entity_With_Style_Check (Subp, Nam);
-         Generate_Reference (Nam, Subp);
+         Set_Entity (Subp, Nam);
 
       --  Otherwise we must have the case of an overloaded call
 
@@ -2295,8 +2196,7 @@ null;              end if;
          while Present (It.Typ) loop
             if Covers (Typ, It.Typ) then
                Nam := It.Nam;
-               Set_Entity_With_Style_Check (Subp, Nam);
-               Generate_Reference (Nam, Subp);
+               Set_Entity (Subp, Nam);
                exit;
             end if;
 
@@ -2458,7 +2358,6 @@ null;              end if;
                if No (First_Formal (Nam))
                  and then Etype (Nam) = Standard_Void_Type
                  and then not Error_Posted (N)
-                 and then Nkind (Parent (N)) /= N_Exception_Handler
                then
                   Set_Has_Recursive_Call (Nam);
                   Error_Msg_N ("possible infinite recursion?", N);
@@ -2512,10 +2411,6 @@ null;              end if;
             return;
          end if;
 
-      --  elsif Is_Init_Proc (Nam)
-      --    and then not Within_Init_Proc
-      --  then
-      --     Check_Initialization_Call (N, Nam);
       end if;
 
       --  Propagate interpretation to actuals, and add default expressions
@@ -2610,8 +2505,7 @@ null;              end if;
 
          while Present (C) loop
             if Etype (C) = B_Typ then
-               Set_Entity_With_Style_Check (N, C);
-               Generate_Reference (C, N);
+               Set_Entity (N, C);
                return;
             end if;
 
@@ -2642,8 +2536,6 @@ null;              end if;
       T : Entity_Id;
 
    begin
-      Check_Direct_Boolean_Op (N);
-
       --  If this is an intrinsic operation which is not predefined, use
       --  the types of its declared arguments to resolve the possibly
       --  overloaded operands. Otherwise the operands are unambiguous and
@@ -2657,7 +2549,6 @@ null;              end if;
       end if;
 
       Set_Etype (N, Base_Type (Typ));
-      Generate_Reference (T, N, ' ');
 
       if T /= Any_Type then
          if T = Any_String
@@ -2685,7 +2576,6 @@ null;              end if;
             Resolve (R, T);
             Check_Unset_Reference (L);
             Check_Unset_Reference (R);
-            Generate_Operator_Reference (N, T);
             Eval_Relational_Op (N);
          end if;
       end if;
@@ -2763,36 +2653,6 @@ null;              end if;
             --  type of the context.
 
             --Apply_Range_Check (R, S);
-
-            --  ??? If the above check statically detects a Constraint_Error
-            --  it replaces the offending bound(s) of the range R with a
-            --  Constraint_Error node. When the itype which uses these bounds
-            --  is frozen the resulting call to Duplicate_Subexpr generates
-            --  a new temporary for the bounds.
-
-            --  Unfortunately there are other itypes that are also made depend
-            --  on these bounds, so when Duplicate_Subexpr is called they get
-            --  a forward reference to the newly created temporaries and Gigi
-            --  aborts on such forward references. This is probably sign of a
-            --  more fundamental problem somewhere else in either the order of
-            --  itype freezing or the way certain itypes are constructed.
-
-            --  To get around this problem we call Remove_Side_Effects right
-            --  away if either bounds of R are a Constraint_Error.
-
-            declare
-               L : constant Node_Id := Low_Bound (R);
-               H : constant Node_Id := High_Bound (R);
-
-            begin
-               if Nkind (L) = N_Raise_Constraint_Error then
-                  Remove_Side_Effects (L);
-               end if;
-
-               if Nkind (H) = N_Raise_Constraint_Error then
-                  Remove_Side_Effects (H);
-               end if;
-            end;
 
             Check_Unset_Reference (Low_Bound  (R));
             Check_Unset_Reference (High_Bound (R));
@@ -2951,10 +2811,7 @@ null;              end if;
    --  Start of processing for Resolve_Equality_Op
 
    begin
-      Check_Direct_Boolean_Op (N);
-
       Set_Etype (N, Base_Type (Typ));
-      Generate_Reference (T, N, ' ');
 
       if T /= Any_Type then
 
@@ -3005,7 +2862,6 @@ null;              end if;
 
          Check_Unset_Reference (L);
          Check_Unset_Reference (R);
-         Generate_Operator_Reference (N, T);
 
          --  If this is an inequality, it may be the implicit inequality
          --  created for a user-defined operation, in which case the corres-
@@ -3330,8 +3186,6 @@ null;              end if;
       B_Typ : Entity_Id;
 
    begin
-      Check_Direct_Boolean_Op (N);
-
       --  Predefined operations on scalar types yield the base type. On
       --  the other hand, logical operations on arrays yield the type of
       --  the arguments (and the context).
@@ -3372,7 +3226,6 @@ null;              end if;
       Check_Unset_Reference (Right_Opnd (N));
 
       Set_Etype (N, B_Typ);
-      Generate_Operator_Reference (N, B_Typ);
       Eval_Logical_Op (N);
    end Resolve_Logical_Op;
 
@@ -3586,8 +3439,6 @@ null;              end if;
            (Op2, Is_Component_Right_Opnd  (N));
       end if;
 
-      Generate_Operator_Reference (N, Typ);
-
       if Is_String_Type (Typ) then
          Eval_Concatenation (N);
       end if;
@@ -3641,7 +3492,6 @@ null;              end if;
       Check_Unset_Reference (Right_Opnd (N));
 
       Set_Etype (N, B_Typ);
-      Generate_Operator_Reference (N, B_Typ);
       Eval_Op_Expon (N);
 
       --  Set overflow checking bit. Much cleverer code needed here eventually
@@ -3738,7 +3588,6 @@ null;              end if;
          Resolve (Right_Opnd (N), B_Typ);
          Check_Unset_Reference (Right_Opnd (N));
          Set_Etype (N, B_Typ);
-         Generate_Operator_Reference (N, B_Typ);
          Eval_Op_Not (N);
       end if;
    end Resolve_Op_Not;
@@ -4030,7 +3879,6 @@ null;              end if;
       Check_Unset_Reference (R);
 
       Set_Etype (N, B_Typ);
-      Generate_Operator_Reference (N, B_Typ);
       Eval_Shift (N);
    end Resolve_Shift;
 
@@ -4547,7 +4395,6 @@ null;              end if;
       Resolve (R, B_Typ);
 
       Check_Unset_Reference (R);
-      Generate_Operator_Reference (N, B_Typ);
       Eval_Unary_Op (N);
 
       --  Set overflow checking bit. Much cleverer code needed here eventually
@@ -4594,68 +4441,6 @@ null;              end if;
       Eval_Unchecked_Conversion (N);
 
    end Resolve_Unchecked_Type_Conversion;
-
-   ------------------------------
-   -- Rewrite_Operator_As_Call --
-   ------------------------------
-
-   procedure Rewrite_Operator_As_Call (N : Node_Id; Nam : Entity_Id) is
-      Loc     : constant Source_Ptr := Sloc (N);
-      Actuals : constant List_Id    := New_List;
-      New_N   : Node_Id;
-
-   begin
-      if Nkind (N) in  N_Binary_Op then
-         Append (Left_Opnd (N), Actuals);
-      end if;
-
-      Append (Right_Opnd (N), Actuals);
-
-      New_N :=
-        Make_Function_Call (Sloc => Loc,
-          Name => New_Occurrence_Of (Nam, Loc),
-          Parameter_Associations => Actuals);
-
-      Preserve_Comes_From_Source (New_N, N);
-      Preserve_Comes_From_Source (Name (New_N), N);
-      Rewrite (N, New_N);
-      Set_Etype (N, Etype (Nam));
-   end Rewrite_Operator_As_Call;
-
-   ------------------------------
-   -- Rewrite_Renamed_Operator --
-   ------------------------------
-
-   procedure Rewrite_Renamed_Operator (N : Node_Id; Op : Entity_Id) is
-      Nam       : constant Name_Id := Chars (Op);
-      Is_Binary : constant Boolean := Nkind (N) in N_Binary_Op;
-      Op_Node   : Node_Id;
-
-   begin
-      --  Rewrite the operator node using the real operator, not its
-      --  renaming. Exclude user-defined intrinsic operations, which
-      --  are treated separately.
-
-      if Ekind (Op) /= E_Function then
-         Op_Node := New_Node (Operator_Kind (Nam, Is_Binary), Sloc (N));
-         Set_Chars      (Op_Node, Nam);
-         Set_Etype      (Op_Node, Etype (N));
-         Set_Entity     (Op_Node, Op);
-         Set_Right_Opnd (Op_Node, Right_Opnd (N));
-
-         --  Indicate that both the original entity and its renaming
-         --  are referenced at this point.
-
-         Generate_Reference (Entity (N), N);
-         Generate_Reference (Op, N);
-
-         if Is_Binary then
-            Set_Left_Opnd  (Op_Node, Left_Opnd  (N));
-         end if;
-
-         Rewrite (N, Op_Node);
-      end if;
-   end Rewrite_Renamed_Operator;
 
    -----------------------
    -- Set_Slice_Subtype --

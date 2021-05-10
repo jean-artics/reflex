@@ -676,7 +676,6 @@ pragma Preelaborate (Types);
    type Check_Id is (
       Access_Check,
       Accessibility_Check,
-      Discriminant_Check,
       Division_Check,
       Elaboration_Check,
       Index_Check,

@@ -84,11 +84,6 @@ package body Scn is
             Set_Has_Wide_Character (Token_Node, Wide_Character_Found);
             Set_Strval (Token_Node, String_Literal_Id);
 
-         when Tok_Operator_Symbol =>
-            Token_Node := New_Node (N_Operator_Symbol, Token_Ptr);
-            Set_Chars (Token_Node, Token_Name);
-            Set_Strval (Token_Node, String_Literal_Id);
-
          when others =>
             null;
       end case;
@@ -104,9 +99,6 @@ package body Scn is
    begin
       if Len > Hostparm.Max_Line_Length then
          Error_Long_Line;
-
-      elsif Style_Check then
-         Style.Check_Line_Terminator (Len);
       end if;
    end Check_End_Of_Line;
 

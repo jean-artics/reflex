@@ -30,7 +30,7 @@ with Scans;    use Scans;
 with Sinput;   use Sinput;
 with Snames;   use Snames;
 with Stringt;  use Stringt;
-with Stylesw;  use Stylesw;
+--with Stylesw;  use Stylesw;
 with Uintp;    use Uintp;
 with Urealp;   use Urealp;
 with Widechar; use Widechar;
@@ -144,13 +144,10 @@ package body Scng is
       Set_Name_Table_Byte (Name_Case,       Token_Type'Pos (Tok_Case));
       Set_Name_Table_Byte (Name_Constant,   Token_Type'Pos (Tok_Constant));
       Set_Name_Table_Byte (Name_Declare,    Token_Type'Pos (Tok_Declare));
-      Set_Name_Table_Byte (Name_Delta,      Token_Type'Pos (Tok_Delta));
-      Set_Name_Table_Byte (Name_Digits,     Token_Type'Pos (Tok_Digits));
       Set_Name_Table_Byte (Name_Do,         Token_Type'Pos (Tok_Do));
       Set_Name_Table_Byte (Name_Else,       Token_Type'Pos (Tok_Else));
       Set_Name_Table_Byte (Name_Elsif,      Token_Type'Pos (Tok_Elsif));
       Set_Name_Table_Byte (Name_End,        Token_Type'Pos (Tok_End));
-      Set_Name_Table_Byte (Name_Exception,  Token_Type'Pos (Tok_Exception));
       Set_Name_Table_Byte (Name_Exit,       Token_Type'Pos (Tok_Exit));
       Set_Name_Table_Byte (Name_For,        Token_Type'Pos (Tok_For));
       Set_Name_Table_Byte (Name_Function,   Token_Type'Pos (Tok_Function));
@@ -172,7 +169,6 @@ package body Scng is
       Set_Name_Table_Byte (Name_Pragma,     Token_Type'Pos (Tok_Pragma));
       Set_Name_Table_Byte (Name_Private,    Token_Type'Pos (Tok_Private));
       Set_Name_Table_Byte (Name_Procedure,  Token_Type'Pos (Tok_Procedure));
-      Set_Name_Table_Byte (Name_Raise,      Token_Type'Pos (Tok_Raise));
       Set_Name_Table_Byte (Name_Range,      Token_Type'Pos (Tok_Range));
       Set_Name_Table_Byte (Name_Record,     Token_Type'Pos (Tok_Record));
       Set_Name_Table_Byte (Name_Rem,        Token_Type'Pos (Tok_Rem));
@@ -190,7 +186,16 @@ package body Scng is
       Set_Name_Table_Byte (Name_While,      Token_Type'Pos (Tok_While));
       Set_Name_Table_Byte (Name_With,       Token_Type'Pos (Tok_With));
       Set_Name_Table_Byte (Name_Xor,        Token_Type'Pos (Tok_Xor));
-
+      
+      Set_Name_Table_Byte (Name_Wait,       Token_Type'Pos (Tok_Wait));
+      Set_Name_Table_Byte (Name_Pause,      Token_Type'Pos (Tok_Pause));
+      Set_Name_Table_Byte (Name_Select,     Token_Type'Pos (Tok_Select));
+      Set_Name_Table_Byte (Name_Fork,       Token_Type'Pos (Tok_Fork));
+      Set_Name_Table_Byte (Name_Abort,      Token_Type'Pos (Tok_Abort));
+      Set_Name_Table_Byte (Name_Reactive,   Token_Type'Pos (Tok_Reactive));
+      Set_Name_Table_Byte (Name_Flow,       Token_Type'Pos (Tok_Flow));
+      Set_Name_Table_Byte (Name_Reaction,   Token_Type'Pos (Tok_Reaction));
+      
       --  Initialize scan control variables
 
       Current_Source_File       := Index;
@@ -279,10 +284,7 @@ package body Scng is
          Len : constant Int := Int (Scan_Ptr) - Int (Current_Line_Start);
 
       begin
-         if Style_Check and Style_Check_Max_Line_Length then
-            Style.Check_Line_Terminator (Len);
-
-         elsif Len > Hostparm.Max_Line_Length then
+	 if Len > Hostparm.Max_Line_Length then
             Error_Long_Line;
          end if;
       end Check_End_Of_Line;
@@ -756,15 +758,6 @@ package body Scng is
          --  during scanning a string, meaning that the string is not properly
          --  terminated.
 
-         procedure Set_String;
-         --  Procedure used to distinguish between string and operator symbol.
-         --  On entry the string has been scanned out, and its characters start
-         --  at Token_Ptr and end one character before Scan_Ptr. On exit Token
-         --  is set to Tok_String_Literal or Tok_Operator_Symbol as
-         --  appropriate, and Token_Node is appropriately initialized.
-         --  In addition, in the operator symbol case, Token_Name is
-         --  appropriately set.
-
          ---------------------------
          -- Error_Bad_String_Char --
          ---------------------------
@@ -850,134 +843,6 @@ package body Scng is
 
             Error_Msg_S ("missing string quote");
          end Error_Unterminated_String;
-
-         ----------------
-         -- Set_String --
-         ----------------
-
-         procedure Set_String is
-            Slen : constant Int := Int (Scan_Ptr - Token_Ptr - 2);
-            C1   : Character;
-            C2   : Character;
-            C3   : Character;
-
-         begin
-            --  Token_Name is currently set to Error_Name. The following
-            --  section of code resets Token_Name to the proper Name_Op_xx
-            --  value if the string is a valid operator symbol, otherwise it is
-            --  left set to Error_Name.
-
-            if Slen = 1 then
-               C1 := Source (Token_Ptr + 1);
-
-               case C1 is
-                  when '=' =>
-                     Token_Name := Name_Op_Eq;
-
-                  when '>' =>
-                     Token_Name := Name_Op_Gt;
-
-                  when '<' =>
-                     Token_Name := Name_Op_Lt;
-
-                  when '+' =>
-                     Token_Name := Name_Op_Add;
-
-                  when '-' =>
-                     Token_Name := Name_Op_Subtract;
-
-                  when '&' =>
-                     Token_Name := Name_Op_Concat;
-
-                  when '*' =>
-                     Token_Name := Name_Op_Multiply;
-
-                  when '/' =>
-                     Token_Name := Name_Op_Divide;
-
-                  when others =>
-                     null;
-               end case;
-
-            elsif Slen = 2 then
-               C1 := Source (Token_Ptr + 1);
-               C2 := Source (Token_Ptr + 2);
-
-               if C1 = '*' and then C2 = '*' then
-                  Token_Name := Name_Op_Expon;
-
-               elsif C2 = '=' then
-
-                  if C1 = '/' then
-                     Token_Name := Name_Op_Ne;
-                  elsif C1 = '<' then
-                     Token_Name := Name_Op_Le;
-                  elsif C1 = '>' then
-                     Token_Name := Name_Op_Ge;
-                  end if;
-
-               elsif (C1 = 'O' or else C1 = 'o') and then    -- OR
-                 (C2 = 'R' or else C2 = 'r')
-               then
-                  Token_Name := Name_Op_Or;
-               end if;
-
-            elsif Slen = 3 then
-               C1 := Source (Token_Ptr + 1);
-               C2 := Source (Token_Ptr + 2);
-               C3 := Source (Token_Ptr + 3);
-
-               if (C1 = 'A' or else C1 = 'a') and then       -- AND
-                 (C2 = 'N' or else C2 = 'n') and then
-                 (C3 = 'D' or else C3 = 'd')
-               then
-                  Token_Name := Name_Op_And;
-
-               elsif (C1 = 'A' or else C1 = 'a') and then    -- ABS
-                 (C2 = 'B' or else C2 = 'b') and then
-                 (C3 = 'S' or else C3 = 's')
-               then
-                  Token_Name := Name_Op_Abs;
-
-               elsif (C1 = 'M' or else C1 = 'm') and then    -- MOD
-                 (C2 = 'O' or else C2 = 'o') and then
-                 (C3 = 'D' or else C3 = 'd')
-               then
-                  Token_Name := Name_Op_Mod;
-
-               elsif (C1 = 'N' or else C1 = 'n') and then    -- NOT
-                 (C2 = 'O' or else C2 = 'o') and then
-                 (C3 = 'T' or else C3 = 't')
-               then
-                  Token_Name := Name_Op_Not;
-
-               elsif (C1 = 'R' or else C1 = 'r') and then    -- REM
-                 (C2 = 'E' or else C2 = 'e') and then
-                 (C3 = 'M' or else C3 = 'm')
-               then
-                  Token_Name := Name_Op_Rem;
-
-               elsif (C1 = 'X' or else C1 = 'x') and then    -- XOR
-                 (C2 = 'O' or else C2 = 'o') and then
-                 (C3 = 'R' or else C3 = 'r')
-               then
-                  Token_Name := Name_Op_Xor;
-               end if;
-
-            end if;
-
-            --  If it is an operator symbol, then Token_Name is set.
-            --  If it is some other string value, then Token_Name still
-            --  contains Error_Name.
-
-            if Token_Name = Error_Name then
-               Token := Tok_String_Literal;
-
-            else
-               Token := Tok_Operator_Symbol;
-            end if;
-
-         end Set_String;
 
          ----------
          -- Slit --
@@ -1068,7 +933,8 @@ package body Scng is
          end loop;
 
          String_Literal_Id := End_String;
-         Set_String;
+	 Token := Tok_String_Literal;
+	 
          return;
 
       end Slit;
@@ -1181,7 +1047,6 @@ package body Scng is
          --  Horizontal tab, just skip past it
 
          when HT =>
-            if Style_Check then Style.Check_HT; end if;
             Scan_Ptr := Scan_Ptr + 1;
 
          --  End of file character, treated as an end of file only if it
@@ -1240,7 +1105,6 @@ package body Scng is
 
             if Double_Char_Token ('=') then
                Token := Tok_Colon_Equal;
-               if Style_Check then Style.Check_Colon_Equal; end if;
                return;
 
             elsif Source (Scan_Ptr + 1) = '-'
@@ -1254,7 +1118,6 @@ package body Scng is
             else
                Scan_Ptr := Scan_Ptr + 1;
                Token := Tok_Colon;
-               if Style_Check then Style.Check_Colon; end if;
                return;
             end if;
 
@@ -1264,7 +1127,6 @@ package body Scng is
             Accumulate_Checksum ('(');
             Scan_Ptr := Scan_Ptr + 1;
             Token := Tok_Left_Paren;
-            if Style_Check then Style.Check_Left_Paren; end if;
             return;
 
          --  Left bracket
@@ -1295,7 +1157,6 @@ package body Scng is
             Accumulate_Checksum (',');
             Scan_Ptr := Scan_Ptr + 1;
             Token := Tok_Comma;
-            if Style_Check then Style.Check_Comma; end if;
             return;
 
          --  Dot, which is either an isolated period, or part of a double
@@ -1307,7 +1168,6 @@ package body Scng is
 
             if Double_Char_Token ('.') then
                Token := Tok_Dot_Dot;
-               if Style_Check then Style.Check_Dot_Dot; end if;
                return;
 
             elsif Source (Scan_Ptr + 1) in '0' .. '9' then
@@ -1328,7 +1188,6 @@ package body Scng is
 
             if Double_Char_Token ('>') then
                Token := Tok_Arrow;
-               if Style_Check then Style.Check_Arrow; end if;
                return;
 
             elsif Source (Scan_Ptr + 1) = '=' then
@@ -1373,7 +1232,6 @@ package body Scng is
 
             elsif Double_Char_Token ('>') then
                Token := Tok_Box;
-               if Style_Check then Style.Check_Box; end if;
                return;
 
             elsif Double_Char_Token ('<') then
@@ -1405,7 +1263,6 @@ package body Scng is
             --  Comment
 
             else -- Source (Scan_Ptr + 1) = '-' then
-               if Style_Check then Style.Check_Comment; end if;
                Scan_Ptr := Scan_Ptr + 2;
                Start_Of_Comment := Scan_Ptr;
 
@@ -1431,7 +1288,6 @@ package body Scng is
                   --  Keep going if horizontal tab
 
                   if Source (Scan_Ptr) = HT then
-                     if Style_Check then Style.Check_HT; end if;
                      Scan_Ptr := Scan_Ptr + 1;
 
                   --  Terminate scan of comment if line terminator
@@ -1533,7 +1389,6 @@ package body Scng is
                or else Prev_Token in Token_Class_Literal
             then
                Token := Tok_Apostrophe;
-               if Style_Check then Style.Check_Apostrophe; end if;
                return;
 
             --  Otherwise the apostrophe starts a character literal
@@ -1626,7 +1481,6 @@ package body Scng is
             Accumulate_Checksum (')');
             Scan_Ptr := Scan_Ptr + 1;
             Token := Tok_Right_Paren;
-            if Style_Check then Style.Check_Right_Paren; end if;
             return;
 
          --  Right bracket or right brace, treated as right paren
@@ -1657,7 +1511,6 @@ package body Scng is
             Accumulate_Checksum (';');
             Scan_Ptr := Scan_Ptr + 1;
             Token := Tok_Semicolon;
-            if Style_Check then Style.Check_Semicolon; end if;
             return;
 
          --  Vertical bar
@@ -1676,7 +1529,6 @@ package body Scng is
             else
                Scan_Ptr := Scan_Ptr + 1;
                Token := Tok_Vertical_Bar;
-               if Style_Check then Style.Check_Vertical_Bar; end if;
                return;
             end if;
          end Vertical_Bar_Case;
@@ -2056,23 +1908,6 @@ package body Scng is
          then
             Token := Token_Type'Val (Get_Name_Table_Byte (Token_Name));
 
-            --  Deal with possible style check for non-lower case keyword,
-            --  but we don't treat ACCESS, DELTA, DIGITS, RANGE as keywords
-            --  for this purpose if they appear as attribute designators.
-            --  Actually we only check the first character for speed.
-
-            if Style_Check
-              and then Source (Token_Ptr) <= 'Z'
-              and then (Prev_Token /= Tok_Apostrophe
-                          or else
-                            (Token /= Tok_Access
-                               and then Token /= Tok_Delta
-                               and then Token /= Tok_Digits
-                               and then Token /= Tok_Range))
-            then
-               Style.Non_Lower_Case_Keyword;
-            end if;
-
             --  We must reset Token_Name since this is not an identifier
             --  and if we leave Token_Name set, the parser gets confused
             --  because it thinks it is dealing with an identifier instead
@@ -2192,7 +2027,6 @@ package body Scng is
          --  Outer loop keeps going only if a horizontal tab follows
 
          if Source (Scan_Ptr) = HT then
-            if Style_Check then Style.Check_HT; end if;
             Scan_Ptr := Scan_Ptr + 1;
             Start_Column := (Start_Column / 8) * 8 + 8;
          else

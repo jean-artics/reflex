@@ -194,7 +194,7 @@ package body Exp_Util is
             --  to convert it back, since if it was changed to Standard.Boolean
             --  using Adjust_Condition, that is just fine for this usage.
 
-            if KP in N_Raise_xxx_Error or else KP in N_Has_Condition then
+            if KP in N_Has_Condition then
                return;
 
             --  If result is an operand of another logical operation, no need
@@ -985,12 +985,8 @@ package body Exp_Util is
       --  otherwise. Procedure attribute references are also statements.
 
       if Nkind (Assoc_Node) in N_Subexpr
-        and then (Nkind (Assoc_Node) in N_Raise_xxx_Error
-                   or else Etype (Assoc_Node) /= Standard_Void_Type)
-        and then (Nkind (Assoc_Node) /= N_Attribute_Reference
-                   or else
-                     not Is_Procedure_Attribute_Name
-                           (Attribute_Name (Assoc_Node)))
+        and then (Etype (Assoc_Node) /= Standard_Void_Type)
+        and then (Nkind (Assoc_Node) /= N_Attribute_Reference)
       then
          P := Assoc_Node;             -- ??? does not agree with above!
          N := Parent (Assoc_Node);
@@ -1007,6 +1003,12 @@ package body Exp_Util is
          pragma Assert (Present (P));
 
          case Nkind (P) is
+
+            when N_Attribute_Reference =>
+               null;
+
+            when N_Aspect_Specification =>
+               null;
 
             --  Case of right operand of AND THEN or OR ELSE. Put the actions
             --  in the Actions field of the right operand. They will be moved
@@ -1128,8 +1130,6 @@ package body Exp_Util is
                --  Declarations
 
                N_Abstract_Subprogram_Declaration        |
-               N_Exception_Declaration                  |
-               N_Exception_Renaming_Declaration         |
                N_Formal_Object_Declaration              |
                N_Formal_Subprogram_Declaration          |
                N_Formal_Type_Declaration                |
@@ -1206,24 +1206,6 @@ package body Exp_Util is
                   return;
                end if;
 
-            --  A special case, N_Raise_xxx_Error can act either as a
-            --  statement or a subexpression. We tell the difference
-            --  by looking at the Etype. It is set to Standard_Void_Type
-            --  in the statement case.
-
-            when
-               N_Raise_xxx_Error =>
-                  if Etype (P) = Standard_Void_Type then
-                        Insert_List_Before_And_Analyze (P, Ins_Actions);
-
-                     return;
-
-                  --  In the subexpression case, keep climbing
-
-                  else
-                     null;
-                  end if;
-
             --  If a component association appears within a loop created for
             --  an array aggregate, attach the actions to the association so
             --  they can be subsequently inserted within the loop. For other
@@ -1279,21 +1261,6 @@ package body Exp_Util is
                      null;
                   end if;
 
-            --  Another special case, an attribute denoting a procedure call
-
-            when
-               N_Attribute_Reference =>
-                  if Is_Procedure_Attribute_Name (Attribute_Name (P)) then
-                        Insert_List_Before_And_Analyze (P, Ins_Actions);
-
-                     return;
-
-                  --  In the subexpression case, keep climbing
-
-                  else
-                     null;
-                  end if;
-
             --  For all other node types, keep climbing tree
 
             when
@@ -1314,7 +1281,7 @@ package body Exp_Util is
                N_Constrained_Array_Definition           |
                N_Defining_Character_Literal             |
                N_Defining_Identifier                    |
-               N_Defining_Operator_Symbol               |
+               --N_Defining_Operator_Symbol               |
                N_Defining_Program_Unit_Name             |
                N_Derived_Type_Definition                |
                N_Designator                             |
@@ -1323,7 +1290,6 @@ package body Exp_Util is
                N_Empty                                  |
                N_Enumeration_Type_Definition            |
                N_Error                                  |
-               N_Exception_Handler                      |
                N_Expanded_Name                          |
                N_Explicit_Dereference                   |
                N_Extension_Aggregate                    |
@@ -1344,7 +1310,6 @@ package body Exp_Util is
                N_Index_Or_Discriminant_Constraint       |
                N_Indexed_Component                      |
                N_Integer_Literal                        |
---               N_Itype_Reference                        |
                N_Label                                  |
                N_Loop_Parameter_Specification           |
                N_Mod_Clause                             |
@@ -1377,7 +1342,7 @@ package body Exp_Util is
                N_Op_Shift_Right_Arithmetic              |
                N_Op_Subtract                            |
                N_Op_Xor                                 |
-               N_Operator_Symbol                        |
+               --N_Operator_Symbol                        |
                N_Others_Choice                          |
                N_Package_Specification                  |
                N_Parameter_Association                  |
@@ -1410,7 +1375,20 @@ package body Exp_Util is
                N_With_Type_Clause
             =>
                null;
-
+	       
+	    when N_Reactive_Type            |
+	      N_Reactive_State              |
+	      N_Reactive_Wait_Statement     |
+	      N_Reactive_Pause_Statement    |
+	      N_Reactive_Fork_Statement     |
+	      N_Reactive_Fork_Alternative   |
+	      N_Reactive_Select_Statement   |
+	      N_Reactive_Select_Alternative |
+	      N_Reactive_Abort_Statement    |
+	      N_Reactive_Abort_Handler
+	    =>
+	       null;
+	       
          end case;
 
          --  Make sure that inserted actions stay in the transient scope

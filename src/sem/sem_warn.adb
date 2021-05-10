@@ -452,8 +452,6 @@ package body Sem_Warn is
                            or else
                          Ekind (E1) = E_Label
                            or else
-                         Ekind (E1) = E_Exception
-                           or else
                          Ekind (E1) = E_Named_Integer
                            or else
                          Ekind (E1) = E_Named_Real

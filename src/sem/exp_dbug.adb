@@ -349,9 +349,6 @@ package body Exp_Dbug is
          when N_Object_Renaming_Declaration =>
             Add_Str_To_Name_Buffer ("___XR");
 
-         when N_Exception_Renaming_Declaration =>
-            Add_Str_To_Name_Buffer ("___XRE");
-
          when N_Package_Renaming_Declaration =>
             Add_Str_To_Name_Buffer ("___XRP");
 
@@ -634,8 +631,7 @@ package body Exp_Dbug is
       if (Kind = E_Procedure or else
           Kind = E_Function  or else
           Kind = E_Constant  or else
-          Kind = E_Variable  or else
-          Kind = E_Exception)
+          Kind = E_Variable)
         and then Present (Interface_Name (E))
         and then No (Address_Clause (E))
         and then not Has_Suffix

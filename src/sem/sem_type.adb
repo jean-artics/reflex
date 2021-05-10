@@ -224,12 +224,12 @@ package body Sem_Type is
                --  caller (Analyze_Subprogram_Renaming) so we include the
                --  predefined operator in any case.
 
-               elsif Nkind (N) = N_Operator_Symbol
-                 or else (Nkind (N) = N_Expanded_Name
-                            and then
-                          Nkind (Selector_Name (N)) = N_Operator_Symbol)
-               then
-                  exit;
+--                 elsif Nkind (N) = N_Operator_Symbol
+--                   or else (Nkind (N) = N_Expanded_Name
+--                              and then
+--                            Nkind (Selector_Name (N)) = N_Operator_Symbol)
+--                 then
+--                    exit;
 
                elsif not In_Open_Scopes (Scope (Name))
                  or else Scope_Depth (Scope (Name))
@@ -415,8 +415,9 @@ package body Sem_Type is
 
          elsif (Nkind (N) = N_Function_Call
                  or else Nkind (N) = N_Procedure_Call_Statement)
-           and then (Nkind (Name (N)) = N_Operator_Symbol
-                      or else Is_Entity_Name (Name (N)))
+           and then ( -- Nkind (Name (N)) = N_Operator_Symbol
+                     --or else
+                     Is_Entity_Name (Name (N)))
          then
             Add_Entry (Entity (Name (N)), Etype (N));
 
@@ -1149,7 +1150,7 @@ package body Sem_Type is
                   Arg2 := Right_Opnd (N);
 
                elsif Is_Entity_Name (N)
-                 or else Nkind (N) = N_Operator_Symbol
+--                 or else Nkind (N) = N_Operator_Symbol
                then
                   Arg1 := First_Entity (Entity (N));
                   Arg2 := Next_Entity (Arg1);

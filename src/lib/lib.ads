@@ -557,7 +557,7 @@ package Lib is
    --  or Body_Version attribute. The argument is the external name used to
    --  access the version string.
 
-   procedure List (File_Names_Only : Boolean := False);
+--   procedure List (File_Names_Only : Boolean := False);
    --  Lists units in active library (i.e. generates output consisting of a
    --  sorted listing of the units represented in File table, with the
    --  exception of the main unit). If File_Names_Only is set to True, then
@@ -715,7 +715,7 @@ private
      Table_Increment      => Alloc.Load_Stack_Increment,
      Table_Name           => "Load_Stack");
 
-   procedure Sort (Tbl : in out Unit_Ref_Table);
+--   procedure Sort (Tbl : in out Unit_Ref_Table);
    --  This procedure sorts the given unit reference table in order of
    --  ascending unit names, where the ordering relation is as described
    --  by the comparison routines provided by package Uname.

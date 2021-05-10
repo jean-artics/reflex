@@ -33,7 +33,6 @@ with Freeze;   use Freeze;
 with Itypes;   use Itypes;
 with Layout;   use Layout;
 with Lib;      use Lib;
-with Lib.Xref; use Lib.Xref;
 with Namet;    use Namet;
 with Nmake;    use Nmake;
 with Opt;      use Opt;
@@ -46,7 +45,6 @@ with Sem_Ch7;  use Sem_Ch7;
 with Sem_Ch8;  use Sem_Ch8;
 with Sem_Ch13; use Sem_Ch13;
 with Sem_Disp; use Sem_Disp;
-with Sem_Elim; use Sem_Elim;
 with Sem_Eval; use Sem_Eval;
 with Sem_Mech; use Sem_Mech;
 with Sem_Res;  use Sem_Res;
@@ -388,10 +386,6 @@ package body Sem_Ch3 is
    --  Create new modular type. Verify that modulus is in  bounds and is
    --  a power of two (implementation restriction).
 
-   procedure New_Concatenation_Op (Typ : Entity_Id);
-   --  Create an abbreviated declaration for an operator in order to
-   --  materialize concatenation on array types.
-
    procedure Prepare_Private_Subtype_Completion
      (Id          : Entity_Id;
       Related_Nod : Node_Id);
@@ -647,6 +641,18 @@ package body Sem_Ch3 is
       Set_Is_Access_Constant (T, Constant_Present (Def));
    end Access_Type_Declaration;
 
+   -------------------------------
+   -- Reactive_Type_Declaration --
+   -------------------------------
+
+   procedure Reactive_Type_Declaration (T : Entity_Id; Def : Node_Id) is
+   begin
+      Set_Ekind       (T, E_Reactive_Type);
+      Set_Etype       (T, T);
+      Set_Is_Constrained (T, True);
+      Init_Size_Align (T);
+   end Reactive_Type_Declaration;
+
    -----------------------------------
    -- Analyze_Component_Declaration --
    -----------------------------------
@@ -657,7 +663,6 @@ package body Sem_Ch3 is
       P  : Entity_Id;
 
    begin
-      Generate_Definition (Id);
       Enter_Name (Id);
       T := Find_Type_Of_Object 
 	(Subtype_Indication (Component_Definition (N)), N);
@@ -734,6 +739,11 @@ package body Sem_Ch3 is
       end if;
 
       Set_Original_Record_Component (Id, Id);
+      
+--        if Has_Aspects (N) then
+--           Analyze_Aspect_Specifications (N, Id);
+--        end if;
+
    end Analyze_Component_Declaration;
 
    --------------------------
@@ -853,8 +863,6 @@ package body Sem_Ch3 is
       T : Entity_Id;
 
    begin
-      Generate_Definition (Defining_Identifier (N));
-
       --  Process an incomplete declaration. The identifier must not have been
       --  declared already in the scope. However, an incomplete declaration may
       --  appear in the private part of a package, for a private type that has
@@ -868,11 +876,7 @@ package body Sem_Ch3 is
       Init_Size_Align (T);
       Set_Is_First_Subtype (T, True);
       Set_Etype (T, T);
-      New_Scope (T);
-
       Set_Stored_Constraint (T, No_Elist);
-
-      End_Scope;
 
       --  If the type has discriminants, non-trivial subtypes may be
       --  be declared before the full view of the type. The full views
@@ -894,7 +898,6 @@ package body Sem_Ch3 is
       It    : Interp;
 
    begin
-      Generate_Definition (Id);
       Enter_Name (Id);
 
       --  This is an optimization of a common case of an integer literal
@@ -1067,7 +1070,6 @@ package body Sem_Ch3 is
       if Present (Prev_Entity) then
          Constant_Redeclaration (Id, N, T);
 
-         Generate_Reference (Prev_Entity, Id, 'c');
          Set_Completion_Referenced (Id);
 
          if Error_Posted (N) then
@@ -1084,7 +1086,6 @@ package body Sem_Ch3 is
       --  premature usage in the initialization expression.
 
       else
-         Generate_Definition (Id);
          Enter_Name (Id);
 
          T := Find_Type_Of_Object (Object_Definition (N), N);
@@ -1183,10 +1184,6 @@ package body Sem_Ch3 is
       if Is_Abstract (T) and then Comes_From_Source (N) then
          Error_Msg_N ("type of object cannot be abstract",
            Object_Definition (N));
-         if Is_CPP_Class (T) then
-            Error_Msg_NE ("\} may need a cpp_constructor",
-              Object_Definition (N), T);
-         end if;
 
       --  Case of unconstrained type
 
@@ -1268,13 +1265,6 @@ package body Sem_Ch3 is
 
          if not Is_Constrained (T) then
             null;
-
-         elsif Nkind (E) = N_Raise_Constraint_Error then
-
-            --  Aggregate is statically illegal. Place back in declaration
-
-            Set_Expression (N, E);
-            Set_No_Initialization (N, False);
 
          elsif T = Etype (E) then
             null;
@@ -1405,7 +1395,6 @@ package body Sem_Ch3 is
       Parent_Base : Entity_Id;
 
    begin
-      Generate_Definition (T);
       Enter_Name (T);
 
       Parent_Type := Find_Type_Of_Subtype_Indic (Indic);
@@ -1473,7 +1462,6 @@ package body Sem_Ch3 is
       T  : Entity_Id;
 
    begin
-      Generate_Definition (Id);
       Set_Is_Pure (Id, Is_Pure (Current_Scope));
       Init_Size_Align (Id);
 
@@ -1510,7 +1498,7 @@ package body Sem_Ch3 is
       Set_Is_Generic_Type   (Id, Is_Generic_Type   (Base_Type (T)));
       Set_Is_Volatile       (Id, Is_Volatile       (T));
       Set_Treat_As_Volatile (Id, Treat_As_Volatile (T));
-      Set_Is_Atomic         (Id, Is_Atomic         (T));
+--      Set_Is_Atomic         (Id, Is_Atomic         (T));
 
       --  In the case where there is no constraint given in the subtype
       --  indication, Process_Subtype just returns the Subtype_Mark,
@@ -1719,6 +1707,7 @@ package body Sem_Ch3 is
       Prev   : Entity_Id;
 
    begin
+      Put_Line ("Analyze_Type_Declaration Begin");
       Prev := Find_Type_Name (N);
 
       --  The full view, if present, now points to the current type
@@ -1771,6 +1760,10 @@ package body Sem_Ch3 is
 
                --  If we are in a Remote_Call_Interface package and define
                --  a RACW, Read and Write attribute must be added.
+
+            when N_Reactive_Type =>
+	       Put_Line ("Analyze_Type_Declaration: reactive_Type ");
+               Reactive_Type_Declaration (T, Def);
 
             when N_Array_Type_Definition =>
                Array_Type_Declaration (T, Def);
@@ -1841,7 +1834,6 @@ package body Sem_Ch3 is
          --  made which is the "real" entity, i.e. the one swapped in,
          --  and the second parameter provides the reference location.
 
-         Generate_Reference (T, T, 'c');
          Set_Completion_Referenced (Def_Id);
 
       --  For completion of incomplete type, process incomplete dependents
@@ -1850,14 +1842,11 @@ package body Sem_Ch3 is
 
       elsif Ekind (Prev) = E_Incomplete_Type then
          Process_Incomplete_Dependents (N, T, Prev);
-         Generate_Reference (Prev, Def_Id, 'c');
          Set_Completion_Referenced (Def_Id);
 
       --  If not private type or incomplete type completion, this is a real
       --  definition of a new entity, so record it.
 
-      else
-         Generate_Definition (Def_Id);
       end if;
    end Analyze_Type_Declaration;
 
@@ -1992,16 +1981,6 @@ package body Sem_Ch3 is
             Set_Is_Private_Composite (Etype (T));
             Set_Is_Private_Composite (T);
          end if;
-      end if;
-
-      --  Create a concatenation operator for the new type. Internal
-      --  array types created for packed entities do not need such, they
-      --  are compatible with the user-defined type.
-
-      if Number_Dimensions (T) = 1
-         and then not Is_Packed_Array_Type (T)
-      then
-         New_Concatenation_Op (T);
       end if;
 
       --  In the case of an unconstrained array the parser has already
@@ -2175,26 +2154,6 @@ package body Sem_Ch3 is
 
          else
             Error_Msg_N ("illegal constraint on constrained type", Indic);
-         end if;
-      end if;
-
-      --  If the parent type is not a derived type itself, and is
-      --  declared in a closed scope (e.g., a subprogram), then we
-      --  need to explicitly introduce the new type's concatenation
-      --  operator since Derive_Subprograms will not inherit the
-      --  parent's operator. If the parent type is unconstrained, the
-      --  operator is of the unconstrained base type.
-
-      if Number_Dimensions (Parent_Type) = 1
-        and then not Is_Derived_Type (Parent_Type)
-        and then not Is_Package (Scope (Base_Type (Parent_Type)))
-      then
-         if not Is_Constrained (Parent_Type)
-           and then Is_Constrained (Derived_Type)
-         then
-            New_Concatenation_Op (Implicit_Base);
-         else
-            New_Concatenation_Op (Derived_Type);
          end if;
       end if;
    end Build_Derived_Array_Type;
@@ -4422,7 +4381,7 @@ package body Sem_Ch3 is
       Set_Has_Non_Standard_Rep     (T1, Has_Non_Standard_Rep     (T2));
       Set_Is_Packed                (T1, Is_Packed                (T2));
       Set_Has_Aliased_Components   (T1, Has_Aliased_Components   (T2));
-      Set_Has_Atomic_Components    (T1, Has_Atomic_Components    (T2));
+      -- Set_Has_Atomic_Components    (T1, Has_Atomic_Components    (T2));
       Set_Has_Volatile_Components  (T1, Has_Volatile_Components  (T2));
    end Copy_Array_Base_Type_Attributes;
 
@@ -4436,7 +4395,7 @@ package body Sem_Ch3 is
 
       Set_First_Index          (T1, First_Index           (T2));
       Set_Is_Aliased           (T1, Is_Aliased            (T2));
-      Set_Is_Atomic            (T1, Is_Atomic             (T2));
+--      Set_Is_Atomic            (T1, Is_Atomic             (T2));
       Set_Is_Volatile          (T1, Is_Volatile           (T2));
       Set_Treat_As_Volatile    (T1, Treat_As_Volatile     (T2));
       Set_Is_Constrained       (T1, Is_Constrained        (T2));
@@ -4696,10 +4655,7 @@ package body Sem_Ch3 is
 
       --  If this derivation corresponds to a tagged generic actual, then
       --  primitive operations rename those of the actual. Otherwise the
-      --  primitive operations rename those of the parent type, If the
-      --  parent renames an intrinsic operator, so does the new subprogram.
-      --  We except concatenation, which is always properly typed, and does
-      --  not get expanded as other intrinsic operations.
+      --  primitive operations rename those of the parent type, 
 
       if No (Actual_Subp) then
          if Is_Intrinsic_Subprogram (Parent_Subp) then
@@ -5117,7 +5073,6 @@ package body Sem_Ch3 is
 
          Set_Etype (L, T);
          New_Overloaded_Entity (L);
-         Generate_Definition (L);
          Set_Convention (L, Convention_Intrinsic);
 
          if Nkind (L) = N_Defining_Character_Literal then
@@ -5168,6 +5123,7 @@ package body Sem_Ch3 is
       Prev_Par : Node_Id;
 
    begin
+Put_Line ("Find_Type_Name Begin");
       --  Find incomplete declaration, if some was given.
 
       Prev := Current_Entity_In_Scope (Id);
@@ -5308,7 +5264,7 @@ package body Sem_Ch3 is
 
       else
          --  New type declaration
-
+Put_Line ("Before Enter Name");
          Enter_Name (Id);
          return Id;
       end if;
@@ -6363,53 +6319,6 @@ package body Sem_Ch3 is
       Init_Alignment (T);
 
    end Modular_Type_Declaration;
-
-   --------------------------
-   -- New_Concatenation_Op --
-   --------------------------
-
-   procedure New_Concatenation_Op (Typ : Entity_Id) is
-      Loc : constant Source_Ptr := Sloc (Typ);
-      Op  : Entity_Id;
-
-      function Make_Op_Formal (Typ, Op : Entity_Id) return Entity_Id;
-      --  Create abbreviated declaration for the formal of a predefined
-      --  Operator 'Op' of type 'Typ'
-
-      --------------------
-      -- Make_Op_Formal --
-      --------------------
-
-      function Make_Op_Formal (Typ, Op : Entity_Id) return Entity_Id is
-         Formal : Entity_Id;
-
-      begin
-         Formal := New_Internal_Entity (E_In_Parameter, Op, Loc, 'P');
-         Set_Etype (Formal, Typ);
-         Set_Mechanism (Formal, Default_Mechanism);
-         return Formal;
-      end Make_Op_Formal;
-
-   --  Start of processing for New_Concatenation_Op
-
-   begin
-      Op := Make_Defining_Operator_Symbol (Loc, Name_Op_Concat);
-
-      Set_Ekind                   (Op, E_Operator);
-      Set_Scope                   (Op, Current_Scope);
-      Set_Etype                   (Op, Typ);
-      Set_Homonym                 (Op, Get_Name_Entity_Id (Name_Op_Concat));
-      Set_Is_Immediately_Visible  (Op);
-      Set_Is_Intrinsic_Subprogram (Op);
-      Set_Has_Completion          (Op);
-      Append_Entity               (Op, Current_Scope);
-
-      Set_Name_Entity_Id (Name_Op_Concat, Op);
-
-      Append_Entity (Make_Op_Formal (Typ, Op), Op);
-      Append_Entity (Make_Op_Formal (Typ, Op), Op);
-
-   end New_Concatenation_Op;
 
    ----------------------------------------
    -- Prepare_Private_Subtype_Completion --

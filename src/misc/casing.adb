@@ -58,7 +58,6 @@ package body Casing is
 
          elsif Is_Lower_Case_Letter (Ident (S)) then
             All_Upper := False;
-
             if not After_Und then
                Decisive := True;
             else

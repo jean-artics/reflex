@@ -67,62 +67,20 @@ package body Rxada.Gen.Attrs is
 	    -- Abort_Signal --
 	    ------------------
 
-	 when Attribute_Abort_Signal
-	   | Attribute_Adjacent
-	   | Attribute_Aft
-	   | Attribute_Alignment
-	   | Attribute_Asm_Input
-	   | Attribute_Callable
-	   | Attribute_Caller
-	   | Attribute_Ceiling
+	 when Attribute_Alignment
 	   | Attribute_Class
-	   | Attribute_Code_Address
-	   | Attribute_Compose
-	   | Attribute_Count
-	   | Attribute_Definite
-	   | Attribute_Delta
-	   | Attribute_Denorm
-	   | Attribute_Digits
-	   | Attribute_Emax
-	   | Attribute_Epsilon
-	   | Attribute_External_Tag
-	   | Attribute_Fixed_Value
 	   | Attribute_Fore
-	   | Attribute_Has_Discriminants
-	   | Attribute_Identity
-	   | Attribute_Input
 	   | Attribute_Integer_Value
-	   | Attribute_Large
-	   | Attribute_Machine
-	   | Attribute_Machine_Emax
-	   | Attribute_Machine_Emin
 	   | Attribute_Machine_Mantissa
 	   | Attribute_Machine_Overflows
 	   | Attribute_Machine_Radix
 	   | Attribute_Machine_Rounds
 	   | Attribute_Model
-	   | Attribute_Model_Emin
-	   | Attribute_Model_Epsilon
-	   | Attribute_Model_Mantissa
-	   | Attribute_Model_Small
-	   | Attribute_Output
-	   | Attribute_Partition_ID
 	   | Attribute_Range_Length
-	   | Attribute_Read
-	   | Attribute_Safe_Emax
-	   | Attribute_Safe_First
-	   | Attribute_Safe_Large
-	   | Attribute_Safe_Last
-	   | Attribute_Safe_Small
 	   | Attribute_Scale
 	   | Attribute_Scaling
-	   | Attribute_Signed_Zeros
-	   | Attribute_Small
 	   | Attribute_Unbiased_Rounding
-	   | Attribute_Uet_Address
-	   | Attribute_Valid
-	   | Attribute_Width
-	   | Attribute_Write =>
+	   | Attribute_Valid =>
 	    Error_Msg_N ("attribute not supported by reflex", Node);
 	    
 	    
@@ -161,26 +119,12 @@ package body Rxada.Gen.Attrs is
 	 when Attribute_Bit =>
 	    Generate_Attribute_Bit (This, Node);
 
-	    ---------------
-	    -- Bit_Order --
-	    ---------------
-
-	 when Attribute_Bit_Order =>
-	    Generate_Attribute_Bit_Order (This, Node);
-
 	    ------------------
 	    -- Bit_Position --
 	    ------------------
 
 	 when Attribute_Bit_Position =>
 	    Generate_Attribute_Bit_Position (This, Node);
-
-	    ------------------
-	    -- Body_Version --
-	    ------------------
-
-	 when Attribute_Body_Version =>
-	    Generate_Attribute_Body_Version (This, Node);
 
 	    --------------------
 	    -- Component_Size --
@@ -197,42 +141,10 @@ package body Rxada.Gen.Attrs is
 	    Generate_Attribute_Constrained (This, Node);
 
 	    ---------------
-	    -- Copy_Sign --
-	    ---------------
-
-	 when Attribute_Copy_Sign =>
-	    Generate_Attribute_Copy_Sign (THis, Node);
-
-	    -----------------------
-	    -- Default_Bit_Order --
-	    -----------------------
-
-	 when Attribute_Default_Bit_Order => 
-	    Generate_Attribute_Default_Bit_Order (This, Node);
-
-	    ---------------
-	    -- Elab_Body --
-	    ---------------
-
-	    --  Also handles processing for Elab_Spec and Elab_Subp_Body
-
-	 when Attribute_Elab_Body      |
-           Attribute_Elab_Spec      =>
-	    Generate_Attribute_Elaboration (This, Node);
-
-
-	    ---------------
 	    -- Elab_Spec --
 	    ---------------
 
 	    --  Shares processing with Elab_Body
-
-	    ----------------
-	    -- Elaborated --
-	    ----------------
-
-	 when Attribute_Elaborated =>
-	    Generate_Attribute_Elaborated (This, Node);
 
 	    --------------
 	    -- Enum_Rep --
@@ -315,13 +227,6 @@ package body Rxada.Gen.Attrs is
 	 when Attribute_Last_Bit =>
 	    Generate_Attribute_Last_Bit (This, Node);
 
-	    ------------------
-	    -- Leading_Part --
-	    ------------------
-
-	 when Attribute_Leading_Part =>
-	    Generate_Attribute_Leading_Part (This, Node);
-
 	    ------------
 	    -- Length --
 	    ------------
@@ -361,20 +266,6 @@ package body Rxada.Gen.Attrs is
 	    -- Max_Size_In_Storage_Elements --
 	    ----------------------------------
 
-	    -----------------------
-	    -- Maximum_Alignment --
-	    -----------------------
-
-	 when Attribute_Maximum_Alignment =>
-	    Generate_Attribute_Maximum_Alignment (This, Node);
-
-	    --------------------
-	    -- Mechanism_Code --
-	    --------------------
-
-	 when Attribute_Mechanism_Code =>
-	    Generate_Attribute_Mechanism_Code (This, Node);
-
 	    ---------
 	    -- Min --
 	    ---------
@@ -389,13 +280,6 @@ package body Rxada.Gen.Attrs is
 	 when Attribute_Modulus =>
 	    Generate_Attribute_Modulus (This, Node);
 
-	    --------------------
-	    -- Null_Parameter --
-	    --------------------
-
-	 when Attribute_Null_Parameter => 
-	    Generate_Attribute_Null_Parameter (This, Node);
-	    
 	    -----------------
 	    -- Object_Size --
 	    -----------------
@@ -449,8 +333,8 @@ package body Rxada.Gen.Attrs is
 	    -- Pred --
 	    ----------
 
-	 when Attribute_Pred =>
-	    Generate_Attribute_Pred (This, Node);
+--  	 when Attribute_Pred =>
+--  	    Generate_Attribute_Pred (This, Node);
 
 	    -----------
 	    -- Range --
@@ -493,13 +377,6 @@ package body Rxada.Gen.Attrs is
 
 --  	 when Attribute_Scalar_Storage_Order => 
 --  	    Generate_Attribute_Scalar_Storage_Order (This, Node);
-	    
-	    ----------
-	    -- Size --
-	    ----------
-
-	 when Attribute_Size | Attribute_VADS_Size => 
-	    Generate_Attribute_Size (This, Node);
 	    
 	    ------------------
 	    -- Storage_Pool --
@@ -627,13 +504,6 @@ package body Rxada.Gen.Attrs is
 	 when Attribute_Value_Size =>
 	    Generate_Attribute_Value_Size (This, Node);
 
-	    -------------
-	    -- Version --
-	    -------------
-
-	 when Attribute_Version =>
-	    Generate_Attribute_Version (This, Node);
-
 	    ------------------
 	    -- Wchar_T_Size --
 	    ------------------
@@ -654,13 +524,6 @@ package body Rxada.Gen.Attrs is
 
 	 when Attribute_Wide_Value => 
 	    Generate_Attribute_Wide_Value (This, Node);
-
-	    ----------------
-	    -- Wide_Width --
-	    ----------------
-
-	 when Attribute_Wide_Width =>
-	    Generate_Attribute_Wide_Width (This, Node);
 
 	    ---------------
 	    -- Word_Size --

@@ -52,6 +52,17 @@ package body Snames is
      "off#" &
      "space#" &
      "time#" &
+     "dynamic_predicate#" &
+     "post#" &
+     "postcondition#" &
+     "pre#" &
+     "precondition#" &
+     "predicate#" &
+     "predicate_failure#" &
+     "preelaborable_initialization#" &
+     "preelaborate#" &
+     "static_predicate#" &
+     "type_invariant#" &
      "_alignment#" &
      "_assign#" &
      "_chain#" &
@@ -109,27 +120,25 @@ package body Snames is
      "ras#" &
      "result#" &
      "subp_id#" &
-     "op_abs#" &
-     "op_and#" &
-     "op_mod#" &
-     "op_not#" &
-     "op_or#" &
-     "op_rem#" &
-     "op_xor#" &
-     "op_eq#" &
-     "op_ne#" &
-     "op_lt#" &
-     "op_le#" &
-     "op_gt#" &
-     "op_ge#" &
-     "op_add#" &
-     "op_subtract#" &
-     "op_concat#" &
-     "op_multiply#" &
-     "op_divide#" &
-     "op_expon#" &
-     "ada_83#" &
-     "ada_95#" &
+     "Oabs#" &
+     "Oand#" &
+     "Omod#" &
+     "Onot#" &
+     "Oor#" &
+     "Orem#" &
+     "Oxor#" &
+     "Oeq#" &
+     "One#" &
+     "Olt#" &
+     "Ole#" &
+     "Ogt#" &
+     "Oge#" &
+     "Oadd#" &
+     "Osubtract#" &
+     "Oconcat#" &
+     "Omultiply#" &
+     "Odivide#" &
+     "Oexpon#" &
      "c_pass_by_copy#" &
      "compile_time_warning#" &
      "component_alignment#" &
@@ -138,53 +147,35 @@ package body Snames is
      "elaboration_checks#" &
      "eliminate#" &
      "explicit_overriding#" &
-     "extend_system#" &
      "extensions_allowed#" &
      "external_name_casing#" &
-     "float_representation#" &
      "initialize_scalars#" &
-     "interrupt_state#" &
-     "license#" &
-     "locking_policy#" &
      "long_float#" &
      "no_run_time#" &
      "normalize_scalars#" &
-     "polling#" &
      "persistent_data#" &
      "persistent_object#" &
-     "propagate_exceptions#" &
-     "queuing_policy#" &
      "ravenscar#" &
      "restricted_run_time#" &
      "restrictions#" &
      "restriction_warnings#" &
-     "reviewable#" &
-     "source_file_name#" &
-     "source_file_name_project#" &
      "style_checks#" &
      "suppress#" &
-     "suppress_exception_locations#" &
+     "test_case#" &
      "universal_data#" &
      "unsuppress#" &
-     "use_vads_size#" &
      "validity_checks#" &
      "warnings#" &
      "annotate#" &
      "assert#" &
      "asynchronous#" &
-     "atomic#" &
-     "atomic_components#" &
      "attach_handler#" &
      "comment#" &
      "common_object#" &
-     "complex_representation#" &
-     "controlled#" &
      "convention#" &
-     "cpp_class#" &
-     "cpp_constructor#" &
-     "cpp_virtual#" &
-     "cpp_vtable#" &
+     "contract_cases#" &
      "debug#" &
+     "depends#" &
      "elaborate#" &
      "elaborate_all#" &
      "elaborate_body#" &
@@ -193,33 +184,29 @@ package body Snames is
      "export_function#" &
      "export_object#" &
      "export_procedure#" &
-     "export_value#" &
-     "export_valued_procedure#" &
      "external#" &
      "finalize_storage_only#" &
+     "global#" &
      "ident#" &
      "import#" &
      "import_exception#" &
      "import_function#" &
      "import_object#" &
      "import_procedure#" &
-     "import_valued_procedure#" &
+     "initial_condition#" &
+     "initializes#" &
      "inline#" &
      "inline_always#" &
      "inline_generic#" &
      "inspection_point#" &
      "interface#" &
      "interface_name#" &
-     "interrupt_priority#" &
+     "invariant#" &
      "keep_names#" &
      "link_with#" &
      "linker_alias#" &
      "linker_options#" &
-     "linker_section#" &
      "list#" &
-     "machine_attribute#" &
-     "main#" &
-     "main_storage#" &
      "memory_size#" &
      "no_return#" &
      "obsolescent#" &
@@ -227,32 +214,21 @@ package body Snames is
      "optional_overriding#" &
      "overriding#" &
      "pack#" &
-     "page#" &
-     "preelaborate#" &
-     "psect_object#" &
      "pure#" &
      "pure_function#" &
-     "share_generic#" &
-     "shared#" &
-     "shared_passive#" &
      "source_reference#" &
-     "stream_convert#" &
-     "subtitle#" &
      "suppress_all#" &
      "suppress_debug_info#" &
      "suppress_initialization#" &
      "system_name#" &
-     "title#" &
-     "unchecked_union#" &
-     "unimplemented_unit#" &
+     "unimplemented#" &
+     "unmodified#" &
      "unreferenced#" &
-     "unreserve_all_interrupts#" &
+     "unreferenced_objects#" &
      "volatile#" &
      "volatile_components#" &
-     "weak_external#" &
      "ada#" &
      "assembler#" &
-     "cpp#" &
      "intrinsic#" &
      "stdcall#" &
      "stubbed#" &
@@ -322,69 +298,31 @@ package body Snames is
      "vax_float#" &
      "vms#" &
      "working_storage#" &
-     "abort_signal#" &
      "access#" &
      "address#" &
      "address_size#" &
-     "aft#" &
      "alignment#" &
-     "asm_input#" &
-     "asm_output#" &
-     "ast_entry#" &
      "bit#" &
-     "bit_order#" &
      "bit_position#" &
-     "body_version#" &
-     "callable#" &
-     "caller#" &
-     "code_address#" &
      "component_size#" &
-     "compose#" &
      "constrained#" &
-     "count#" &
-     "default_bit_order#" &
-     "definite#" &
-     "delta#" &
-     "denorm#" &
-     "digits#" &
-     "elaborated#" &
-     "emax#" &
      "enum_rep#" &
-     "epsilon#" &
      "exponent#" &
-     "external_tag#" &
      "first#" &
      "first_bit#" &
-     "fixed_value#" &
-     "fore#" &
-     "has_discriminants#" &
-     "identity#" &
      "img#" &
      "integer_value#" &
      "large#" &
      "last#" &
      "last_bit#" &
-     "leading_part#" &
      "length#" &
-     "machine_emax#" &
-     "machine_emin#" &
-     "machine_mantissa#" &
-     "machine_overflows#" &
-     "machine_radix#" &
      "machine_rounds#" &
      "machine_size#" &
      "mantissa#" &
      "max_size_in_storage_elements#" &
      "maximum_alignment#" &
-     "mechanism_code#" &
-     "model_emin#" &
-     "model_epsilon#" &
-     "model_mantissa#" &
-     "model_small#" &
      "modulus#" &
-     "null_parameter#" &
      "object_size#" &
-     "partition_id#" &
      "passed_by_reference#" &
      "pool_address#" &
      "pos#" &
@@ -392,16 +330,9 @@ package body Snames is
      "range#" &
      "range_length#" &
      "round#" &
-     "safe_emax#" &
-     "safe_first#" &
-     "safe_large#" &
-     "safe_last#" &
-     "safe_small#" &
      "scale#" &
-     "scaling#" &
      "signed_zeros#" &
      "size#" &
-     "small#" &
      "storage_size#" &
      "storage_unit#" &
      "tag#" &
@@ -409,24 +340,18 @@ package body Snames is
      "terminated#" &
      "to_address#" &
      "type_class#" &
-     "uet_address#" &
-     "unbiased_rounding#" &
      "unchecked_access#" &
      "unconstrained_array#" &
      "universal_literal_string#" &
      "unrestricted_access#" &
-     "vads_size#" &
      "val#" &
      "valid#" &
      "value_size#" &
-     "version#" &
      "wchar_t_size#" &
      "wide_width#" &
      "width#" &
      "word_size#" &
-     "adjacent#" &
      "ceiling#" &
-     "copy_sign#" &
      "floor#" &
      "fraction#" &
      "image#" &
@@ -435,7 +360,7 @@ package body Snames is
      "max#" &
      "min#" &
      "model#" &
-     "pred#" &
+     "output#" &
      "remainder#" &
      "rounding#" &
      "succ#" &
@@ -443,22 +368,11 @@ package body Snames is
      "value#" &
      "wide_image#" &
      "wide_value#" &
-     "output#" &
-     "read#" &
-     "write#" &
-     "elab_body#" &
-     "elab_spec#" &
      "storage_pool#" &
      "base#" &
      "class#" &
-     "ceiling_locking#" &
-     "inheritance_locking#" &
-     "fifo_queuing#" &
-     "priority_queuing#" &
-     "fifo_within_priorities#" &
      "access_check#" &
      "accessibility_check#" &
-     "discriminant_check#" &
      "division_check#" &
      "elaboration_check#" &
      "index_check#" &
@@ -513,6 +427,7 @@ package body Snames is
      "return#" &
      "reverse#" &
      "subtype#" &
+     "task#" &
      "terminate#" &
      "then#" &
      "type#" &
@@ -545,6 +460,15 @@ package body Snames is
      "aliased#" &
      "until#" &
      "tagged#" &
+     "reactive#" &
+     "wait#" &
+     "pause#" &
+     "select#" &
+     "fork#" &
+     "reaction#" &
+     "react#" &
+     "flow#" &
+     "activity#" &
      "raise_exception#" &
      "binder#" &
      "body_suffix#" &
@@ -682,7 +606,6 @@ package body Snames is
          when Name_Ada        => return Convention_Ada;
          when Name_Assembler  => return Convention_Assembler;
          when Name_C          => return Convention_C;
-         when Name_CPP        => return Convention_CPP;
          when Name_Intrinsic  => return Convention_Intrinsic;
          when Name_Stdcall    => return Convention_Stdcall;
          when Name_Stubbed    => return Convention_Stubbed;
@@ -701,24 +624,13 @@ package body Snames is
       end case;
    end Get_Convention_Id;
 
-   ---------------------------
-   -- Get_Locking_Policy_Id --
-   ---------------------------
-
-   function Get_Locking_Policy_Id (N : Name_Id) return Locking_Policy_Id is
-   begin
-      return Locking_Policy_Id'Val (N - First_Locking_Policy_Name);
-   end Get_Locking_Policy_Id;
-
    -------------------
    -- Get_Pragma_Id --
    -------------------
 
    function Get_Pragma_Id (N : Name_Id) return Pragma_Id is
    begin
-      if N = Name_AST_Entry then
-         return Pragma_AST_Entry;
-      elsif N = Name_Storage_Size then
+      if N = Name_Storage_Size then
          return Pragma_Storage_Size;
       elsif N = Name_Storage_Unit then
          return Pragma_Storage_Unit;
@@ -728,26 +640,6 @@ package body Snames is
          return Pragma_Id'Val (N - First_Pragma_Name);
       end if;
    end Get_Pragma_Id;
-
-   ---------------------------
-   -- Get_Queuing_Policy_Id --
-   ---------------------------
-
-   function Get_Queuing_Policy_Id (N : Name_Id) return Queuing_Policy_Id is
-   begin
-      return Queuing_Policy_Id'Val (N - First_Queuing_Policy_Name);
-   end Get_Queuing_Policy_Id;
-
-   ------------------------------------
-   -- Get_Task_Dispatching_Policy_Id --
-   ------------------------------------
-
-   function Get_Task_Dispatching_Policy_Id (N : Name_Id)
-     return Task_Dispatching_Policy_Id is
-   begin
-      return Task_Dispatching_Policy_Id'Val
-        (N - First_Task_Dispatching_Policy_Name);
-   end Get_Task_Dispatching_Policy_Id;
 
    ----------------
    -- Initialize --
@@ -864,15 +756,6 @@ package body Snames is
           Last_Renamable_Function_Attribute;
    end Is_Function_Attribute_Name;
 
-   ----------------------------
-   -- Is_Locking_Policy_Name --
-   ----------------------------
-
-   function Is_Locking_Policy_Name (N : Name_Id) return Boolean is
-   begin
-      return N in First_Locking_Policy_Name .. Last_Locking_Policy_Name;
-   end Is_Locking_Policy_Name;
-
    -----------------------------
    -- Is_Operator_Symbol_Name --
    -----------------------------
@@ -889,38 +772,9 @@ package body Snames is
    function Is_Pragma_Name (N : Name_Id) return Boolean is
    begin
       return N in First_Pragma_Name .. Last_Pragma_Name
-        or else N = Name_AST_Entry
         or else N = Name_Storage_Size
         or else N = Name_Storage_Unit;
    end Is_Pragma_Name;
-
-   ---------------------------------
-   -- Is_Procedure_Attribute_Name --
-   ---------------------------------
-
-   function Is_Procedure_Attribute_Name (N : Name_Id) return Boolean is
-   begin
-      return N in First_Procedure_Attribute .. Last_Procedure_Attribute;
-   end Is_Procedure_Attribute_Name;
-
-   ----------------------------
-   -- Is_Queuing_Policy_Name --
-   ----------------------------
-
-   function Is_Queuing_Policy_Name (N : Name_Id) return Boolean is
-   begin
-      return N in First_Queuing_Policy_Name .. Last_Queuing_Policy_Name;
-   end Is_Queuing_Policy_Name;
-
-   -------------------------------------
-   -- Is_Task_Dispatching_Policy_Name --
-   -------------------------------------
-
-   function Is_Task_Dispatching_Policy_Name (N : Name_Id) return Boolean is
-   begin
-      return N in First_Task_Dispatching_Policy_Name ..
-                  Last_Task_Dispatching_Policy_Name;
-   end Is_Task_Dispatching_Policy_Name;
 
    ----------------------------
    -- Is_Type_Attribute_Name --

@@ -34,6 +34,7 @@ with Rxada.Gen.Ch7; use Rxada.Gen.Ch7;
 with Rxada.Gen.Ch10; use Rxada.Gen.Ch10;
 with Rxada.Gen.Ch12; use Rxada.Gen.Ch12;
 with Reflex.Gen.Ada_Outputs; use Reflex.Gen.Ada_Outputs;
+with Reflex.Vertices.Builder;
 
 package body Rxada.Gen.Dispatch is
 
@@ -184,8 +185,8 @@ package body Rxada.Gen.Dispatch is
          when N_Defining_Identifier =>
 	    Generate_Defining_Identifier (This, Node, Declaration);
 	    
-         when N_Defining_Operator_Symbol =>
-            Generate_Defining_Operator_Symbol (This, Node);
+--           when N_Defining_Operator_Symbol =>
+--              Generate_Defining_Operator_Symbol (This, Node);
 
          when N_Defining_Program_Unit_Name =>
             Generate_Defining_Program_Unit_Name (This, Node);
@@ -219,14 +220,6 @@ package body Rxada.Gen.Dispatch is
          when N_Error =>
             null;
 
-         when N_Exception_Handler =>
-            null; -- not output in C code
-
-         when N_Exception_Declaration          |
-              N_Exception_Renaming_Declaration
-         =>
-	    raise Program_Error;
-	    
          when N_Exit_Statement =>
 	    RxAda.Gen.Ch5.Generate_Exit_Statement (This, Node);
 	    
@@ -449,11 +442,11 @@ package body Rxada.Gen.Dispatch is
          when N_Op_Xor =>
 	    RxAda.Gen.Ch4.Generate_Op_Xor (This, Node);
 
-         when N_Operator_Symbol =>
-
-            --  Replaced by the corresponding N_Op_XX node by the expander
-
-            raise Program_Error;
+--           when N_Operator_Symbol =>
+--  
+--              --  Replaced by the corresponding N_Op_XX node by the expander
+--  
+--              raise Program_Error;
 
          when N_Or_Else =>
 	    RxAda.Gen.Ch4.Generate_Or_Else (This, Node);
@@ -496,12 +489,6 @@ package body Rxada.Gen.Dispatch is
 
          when N_Qualified_Expression =>
 	    Generate_Qualified_Expression (This, Node);
-
---           when N_Raise_Expression =>
---              Generate_Raise_Expression (This, Node);
-
-         when N_Raise_xxx_Error | N_Raise_Statement =>
-            Generate_Raise_Error (This, Node);
 
          when N_Range =>
             Generate_Range (This, Node);

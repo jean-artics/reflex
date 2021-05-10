@@ -36,7 +36,13 @@ package Sem_Ch5 is
    procedure Analyze_Loop_Statement             (N : Node_Id);
    procedure Analyze_Null_Statement             (N : Node_Id);
    procedure Analyze_Statements                 (L : List_Id);
-
+   
+   procedure Analyze_Reactive_State             (N : Node_Id);
+   procedure Analyze_Reactive_Pause_Statement   (N : Node_Id);
+   procedure Analyze_Reactive_Wait_Statement    (N : Node_Id);
+   procedure Analyze_Reactive_Select_Statement  (N : Node_Id);
+   procedure Analyze_Reactive_Fork_Statement    (N : Node_Id);
+   
    procedure Analyze_Label_Entity (E : Entity_Id);
    --  This procedure performs direct analysis of the label entity E. It
    --  is used when a label is created by the expander without bothering

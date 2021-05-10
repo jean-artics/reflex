@@ -473,14 +473,6 @@ package body Ch12 is
       Scan_State : Saved_Scan_State;
 
    begin
-      if Token_Name = Name_Abstract then
-         Check_95_Keyword (Tok_Abstract, Tok_Tagged);
-      end if;
-
-      if Token_Name = Name_Tagged then
-         Check_95_Keyword (Tok_Tagged, Tok_Private);
-      end if;
-
       case Token is
 
          --  Mostly we can tell what we have from the initial token. The one
@@ -557,10 +549,6 @@ package body Ch12 is
 
       if Token = Tok_Abstract then
          Scan; -- past ABSTRACT
-
-         if Token_Name = Name_Tagged then
-            Check_95_Keyword (Tok_Tagged, Tok_Private);
-         end if;
 
          if Token /= Tok_Tagged then
             Error_Msg_SP ("ABSTRACT must be followed by TAGGED");

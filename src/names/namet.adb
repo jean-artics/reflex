@@ -746,9 +746,9 @@ package body Namet is
    --------------------
    -- Add_New_String --
    --------------------
-   
+
    --  Reflex Add
-   
+
    procedure Add_New_String (S : String) is
    begin
       if S = "" then
@@ -818,24 +818,24 @@ package body Namet is
       Append (Buf, Id);
       return +Buf;
    end Get_Name_String;
-   
+
    ----------------
    -- Get_String --
    ----------------
-   
+
    --  Reflex Add
-   
+
    function Get_String (Id : Name_Id) return String is
    begin
       if Id = No_Name then
          return "";
       end if;
-      
+
       Get_Name_String (Id);
       return Name_Buffer (1..Name_Len);
    end Get_String;
 
-   
+
    --------------------------------
    -- Get_Name_String_And_Append --
    --------------------------------
@@ -1692,13 +1692,13 @@ package body Namet is
    begin
       return Buf.Chars (1 .. Buf.Length);
    end To_String;
-   
+
    -----------------
    -- String_Find --
    -----------------
-   
+
    --  Reflex Add
-   
+
    function String_Find (S : String) return Name_Id is
    begin
        if S = "" then

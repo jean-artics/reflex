@@ -33,7 +33,7 @@ with Exp_Util; use Exp_Util;
 --  with Expander; use Expander;
 with Freeze;   use Freeze;
 with Lib;      use Lib;
-with Lib.Xref; use Lib.Xref;
+--with Lib.Xref; use Lib.Xref;
 with Namet;    use Namet;
 with Nlists;   use Nlists;
 with Nmake;    use Nmake;
@@ -79,24 +79,15 @@ package body Sem_Attr is
 
    Attribute_83 : constant Attribute_Class_Array := Attribute_Class_Array'(
       Attribute_Address           |
-      Attribute_Aft               |
       Attribute_Alignment         |
       Attribute_Base              |
-      Attribute_Callable          |
       Attribute_Constrained       |
-      Attribute_Count             |
-      Attribute_Delta             |
-      Attribute_Digits            |
-      Attribute_Emax              |
-      Attribute_Epsilon           |
       Attribute_First             |
       Attribute_First_Bit         |
       Attribute_Fore              |
       Attribute_Image             |
-      Attribute_Large             |
       Attribute_Last              |
       Attribute_Last_Bit          |
-      Attribute_Leading_Part      |
       Attribute_Length            |
       Attribute_Machine_Emax      |
       Attribute_Machine_Emin      |
@@ -107,19 +98,13 @@ package body Sem_Attr is
       Attribute_Mantissa          |
       Attribute_Pos               |
       Attribute_Position          |
-      Attribute_Pred              |
       Attribute_Range             |
-      Attribute_Safe_Emax         |
-      Attribute_Safe_Large        |
-      Attribute_Safe_Small        |
       Attribute_Size              |
-      Attribute_Small             |
       Attribute_Storage_Size      |
       Attribute_Succ              |
       Attribute_Terminated        |
       Attribute_Val               |
-      Attribute_Value             |
-      Attribute_Width             => True,
+      Attribute_Value             => True,
       others                      => False);
 
    -----------------------
@@ -875,8 +860,6 @@ package body Sem_Attr is
             if Nkind (Parent (N)) = N_Attribute_Reference
               and then (Attribute_Name (Parent (N)) = Name_Address
                           or else
-                        Attribute_Name (Parent (N)) = Name_Code_Address
-                          or else
                         Attribute_Name (Parent (N)) = Name_Access)
             then
                Error_Msg_Name_1 := Attribute_Name (Parent (N));
@@ -1342,12 +1325,6 @@ package body Sem_Attr is
       --  that we never analyze the prefix of an Elab_Body or Elab_Spec
       --  or UET_Address attribute.
 
-      if Aname /= Name_Elab_Body
-           and then
-         Aname /= Name_Elab_Spec
-           and then
-         Aname /= Name_UET_Address
-      then
          Analyze (P);
          P_Type := Etype (P);
 
@@ -1366,7 +1343,6 @@ package body Sem_Attr is
          end if;
 
          P_Base_Type := Base_Type (P_Type);
-      end if;
 
       --  Analyze expressions that may be present, exiting if an error occurs
 
@@ -1402,8 +1378,6 @@ package body Sem_Attr is
       if Is_Overloaded (P)
         and then Aname /= Name_Access
         and then Aname /= Name_Address
-        and then Aname /= Name_Code_Address
-        and then Aname /= Name_Count
         and then Aname /= Name_Unchecked_Access
       then
          Error_Attr ("ambiguous prefix for % attribute", P);
@@ -1412,12 +1386,6 @@ package body Sem_Attr is
       --  Remaining processing depends on attribute
 
       case Attr_Id is
-
-      ------------------
-      -- Abort_Signal --
-      ------------------
-
-      when Attribute_Abort_Signal => null;
 
       ------------
       -- Access --
@@ -1509,22 +1477,6 @@ package body Sem_Attr is
       when Attribute_Address_Size =>
          Standard_Attribute (System_Address_Size);
 
-      --------------
-      -- Adjacent --
-      --------------
-
-      when Attribute_Adjacent =>
-         Check_Floating_Point_Type_2;
-         Set_Etype (N, P_Base_Type);
-         Resolve (E1, P_Base_Type);
-         Resolve (E2, P_Base_Type);
-
-      ---------
-      -- Aft --
-      ---------
-
-      when Attribute_Aft => null;
-
       ---------------
       -- Alignment --
       ---------------
@@ -1536,40 +1488,6 @@ package body Sem_Attr is
          Check_E0;
          Check_Not_Incomplete_Type;
          Set_Etype (N, Universal_Integer);
-
-      ---------------
-      -- Asm_Input --
-      ---------------
-
-      when Attribute_Asm_Input =>
-         Check_Asm_Attribute;
-         Set_Etype (N, RTE (RE_Asm_Input_Operand));
-
-      ----------------
-      -- Asm_Output --
-      ----------------
-
-      when Attribute_Asm_Output =>
-         Check_Asm_Attribute;
-
-         if Etype (E2) = Any_Type then
-            return;
-
-         elsif Aname = Name_Asm_Output then
-            if not Is_Variable (E2) then
-               Error_Attr
-                 ("second argument for Asm_Output is not variable", E2);
-            end if;
-         end if;
-
-         Note_Possible_Modification (E2);
-         Set_Etype (N, RTE (RE_Asm_Output_Operand));
-
-      ---------------
-      -- AST_Entry --
-      ---------------
-
-      when Attribute_AST_Entry => null;
 
       ----------
       -- Base --
@@ -1655,35 +1573,6 @@ package body Sem_Attr is
          Set_Etype (N, Universal_Integer);
       end Bit;
 
-      ---------------
-      -- Bit_Order --
-      ---------------
-
-      when Attribute_Bit_Order => Bit_Order :
-      begin
-         Check_E0;
-         Check_Type;
-
-         if not Is_Record_Type (P_Type) then
-            Error_Attr ("prefix of % attribute must be record type", P);
-         end if;
-
-         if Bytes_Big_Endian xor Reverse_Bit_Order (P_Type) then
-            Rewrite (N,
-              New_Occurrence_Of (RTE (RE_High_Order_First), Loc));
-         else
-            Rewrite (N,
-              New_Occurrence_Of (RTE (RE_Low_Order_First), Loc));
-         end if;
-
-         Set_Etype (N, RTE (RE_Bit_Order));
-         Resolve (N);
-
-         --  Reset incorrect indication of staticness
-
-         Set_Is_Static_Expression (N, False);
-      end Bit_Order;
-
       ------------------
       -- Bit_Position --
       ------------------
@@ -1703,36 +1592,6 @@ package body Sem_Attr is
          end if;
 
          Set_Etype (N, Universal_Integer);
-
-      ------------------
-      -- Body_Version --
-      ------------------
-
-      when Attribute_Body_Version =>
-         Check_E0;
-         Check_Program_Unit;
-         Set_Etype (N, RTE (RE_Version_String));
-
-      --------------
-      -- Callable --
-      --------------
-
-      when Attribute_Callable =>  null;
-
-      ------------
-      -- Caller --
-      ------------
-
-      when Attribute_Caller => null;
-
-      -------------
-      -- Ceiling --
-      -------------
-
-      when Attribute_Ceiling =>
-         Check_Floating_Point_Type_1;
-         Set_Etype (N, P_Base_Type);
-         Resolve (E1, P_Base_Type);
 
       -----------
       -- Class --
@@ -1768,31 +1627,6 @@ package body Sem_Attr is
 
       end Class;
 
-      ------------------
-      -- Code_Address --
-      ------------------
-
-      when Attribute_Code_Address =>
-         Check_E0;
-
-         if Nkind (P) = N_Attribute_Reference
-           and then (Attribute_Name (P) = Name_Elab_Body
-                       or else
-                     Attribute_Name (P) = Name_Elab_Spec)
-         then
-            null;
-
-         elsif not Is_Entity_Name (P)
-           or else (Ekind (Entity (P)) /= E_Function
-                      and then
-                    Ekind (Entity (P)) /= E_Procedure)
-         then
-            Error_Attr ("invalid prefix for % attribute", P);
-            Set_Address_Taken (Entity (P));
-         end if;
-
-         Set_Etype (N, RTE (RE_Address));
-
       --------------------
       -- Component_Size --
       --------------------
@@ -1808,16 +1642,6 @@ package body Sem_Attr is
          else
             Check_Array_Type;
          end if;
-
-      -------------
-      -- Compose --
-      -------------
-
-      when Attribute_Compose =>
-         Check_Floating_Point_Type_2;
-         Set_Etype (N, P_Base_Type);
-         Resolve (E1, P_Base_Type);
-         Resolve (E2, Any_Integer);
 
       -----------------
       -- Constrained --
@@ -1884,109 +1708,6 @@ package body Sem_Attr is
          Error_Attr
            ("prefix of % attribute must be object of discriminated type", P);
 
-      ---------------
-      -- Copy_Sign --
-      ---------------
-
-      when Attribute_Copy_Sign =>
-         Check_Floating_Point_Type_2;
-         Set_Etype (N, P_Base_Type);
-         Resolve (E1, P_Base_Type);
-         Resolve (E2, P_Base_Type);
-
-      -----------
-      -- Count --
-      -----------
-
-      when Attribute_Count => null;
-
-      -----------------------
-      -- Default_Bit_Order --
-      -----------------------
-
-      when Attribute_Default_Bit_Order => Default_Bit_Order :
-      begin
-         Check_Standard_Prefix;
-         Check_E0;
-
-         if Bytes_Big_Endian then
-            Rewrite (N,
-              Make_Integer_Literal (Loc, False_Value));
-         else
-            Rewrite (N,
-              Make_Integer_Literal (Loc, True_Value));
-         end if;
-
-         Set_Etype (N, Universal_Integer);
-         Set_Is_Static_Expression (N);
-      end Default_Bit_Order;
-
-      --------------
-      -- Definite --
-      --------------
-
-      when Attribute_Definite =>
-         Legal_Formal_Attribute;
-
-      -----------
-      -- Delta --
-      -----------
-
-      when Attribute_Delta =>
-	 null;
-
-      ------------
-      -- Denorm --
-      ------------
-
-      when Attribute_Denorm => null;
-
-      ------------
-      -- Digits --
-      ------------
-
-      when Attribute_Digits => null;
-
-      ---------------
-      -- Elab_Body --
-      ---------------
-
-      --  Also handles processing for Elab_Spec
-
-      when Attribute_Elab_Body | Attribute_Elab_Spec =>
-         Check_E0;
-         Check_Unit_Name (P);
-         Set_Etype (N, Standard_Void_Type);
-
-         --  We have to manually call the expander in this case to get
-         --  the necessary expansion (normally attributes that return
-         --  entities are not expanded).
-
-         --  Expand (N);
-
-      ---------------
-      -- Elab_Spec --
-      ---------------
-
-      --  Shares processing with Elab_Body
-
-      ----------------
-      -- Elaborated --
-      ----------------
-
-      when Attribute_Elaborated =>
-         Check_E0;
-         Check_Library_Unit;
-         Set_Etype (N, Standard_Boolean);
-
-      ----------
-      -- Emax --
-      ----------
-
-      when Attribute_Emax =>
-         Check_Floating_Point_Type_0;
-         Set_Etype (N, Universal_Integer);
-
       --------------
       -- Enum_Rep --
       --------------
@@ -2013,12 +1734,6 @@ package body Sem_Attr is
          Set_Etype (N, Universal_Integer);
       end Enum_Rep;
 
-      -------------
-      -- Epsilon --
-      -------------
-
-      when Attribute_Epsilon => null;
-
       --------------
       -- Exponent --
       --------------
@@ -2027,20 +1742,6 @@ package body Sem_Attr is
          Check_Floating_Point_Type_1;
          Set_Etype (N, Universal_Integer);
          Resolve (E1, P_Base_Type);
-
-      ------------------
-      -- External_Tag --
-      ------------------
-
-      when Attribute_External_Tag =>
-         Check_E0;
-         Check_Type;
-
-         Set_Etype (N, Standard_String);
-
-         if not Is_Tagged_Type (P_Type) then
-            Error_Attr ("prefix of % attribute must be tagged", P);
-         end if;
 
       -----------
       -- First --
@@ -2056,12 +1757,6 @@ package body Sem_Attr is
       when Attribute_First_Bit =>
          Check_Component;
          Set_Etype (N, Universal_Integer);
-
-      -----------------
-      -- Fixed_Value --
-      -----------------
-
-      when Attribute_Fixed_Value => null;
 
       -----------
       -- Floor --
@@ -2086,28 +1781,6 @@ package body Sem_Attr is
          Check_Floating_Point_Type_1;
          Set_Etype (N, P_Base_Type);
          Resolve (E1, P_Base_Type);
-
-      -----------------------
-      -- Has_Discriminants --
-      -----------------------
-
-      when Attribute_Has_Discriminants => null;
-
-      --------------
-      -- Identity --
-      --------------
-
-      when Attribute_Identity =>
-         Check_E0;
-         Analyze (P);
-
-         if Etype (P) =  Standard_Exception_Type then
-            Set_Etype (N, RTE (RE_Exception_Id));
-
-         else
-            Error_Attr ("prefix of % attribute must be an "
-              & "exception", P);
-         end if;
 
       -----------
       -- Image --
@@ -2146,12 +1819,6 @@ package body Sem_Attr is
          Check_Enum_Image;
       end Img;
 
-      -----------
-      -- Input --
-      -----------
-
-      when Attribute_Input => null;
-
       -------------------
       -- Integer_Value --
       -------------------
@@ -2161,15 +1828,6 @@ package body Sem_Attr is
          Check_Integer_Type;
          Resolve (E1, Any_Fixed);
          Set_Etype (N, P_Base_Type);
-
-      -----------
-      -- Large --
-      -----------
-
-      when Attribute_Large =>
-         Check_E0;
-         Check_Real_Type;
-         Set_Etype (N, Universal_Real);
 
       ----------
       -- Last --
@@ -2186,16 +1844,6 @@ package body Sem_Attr is
          Check_Component;
          Set_Etype (N, Universal_Integer);
 
-      ------------------
-      -- Leading_Part --
-      ------------------
-
-      when Attribute_Leading_Part =>
-         Check_Floating_Point_Type_2;
-         Set_Etype (N, P_Base_Type);
-         Resolve (E1, P_Base_Type);
-         Resolve (E2, Any_Integer);
-
       ------------
       -- Length --
       ------------
@@ -2203,15 +1851,6 @@ package body Sem_Attr is
       when Attribute_Length =>
          Check_Array_Type;
          Set_Etype (N, Universal_Integer);
-
-      -------------
-      -- Machine --
-      -------------
-
-      when Attribute_Machine =>
-         Check_Floating_Point_Type_1;
-         Set_Etype (N, P_Base_Type);
-         Resolve (E1, P_Base_Type);
 
       ------------------
       -- Machine_Emax --
@@ -2304,44 +1943,6 @@ package body Sem_Attr is
          Check_Not_Incomplete_Type;
          Set_Etype (N, Universal_Integer);
 
-      -----------------------
-      -- Maximum_Alignment --
-      -----------------------
-
-      when Attribute_Maximum_Alignment =>
-         Standard_Attribute (Ttypes.Maximum_Alignment);
-
-      --------------------
-      -- Mechanism_Code --
-      --------------------
-
-      when Attribute_Mechanism_Code =>
-         if not Is_Entity_Name (P)
-           or else not Is_Subprogram (Entity (P))
-         then
-            Error_Attr ("prefix of % attribute must be subprogram", P);
-         end if;
-
-         Check_Either_E0_Or_E1;
-
-         if Present (E1) then
-            Resolve (E1, Any_Integer);
-            Set_Etype (E1, Standard_Integer);
-
-            if not Is_Static_Expression (E1) then
-               Flag_Non_Static_Expr
-                 ("expression for parameter number must be static!", E1);
-               Error_Attr;
-
-            elsif UI_To_Int (Intval (E1)) > Number_Formals (Entity (P))
-              or else UI_To_Int (Intval (E1)) < 0
-            then
-               Error_Attr ("invalid parameter number for %attribute", E1);
-            end if;
-         end if;
-
-         Set_Etype (N, Universal_Integer);
-
       ---------
       -- Min --
       ---------
@@ -2362,38 +1963,6 @@ package body Sem_Attr is
          Set_Etype (N, P_Base_Type);
          Resolve (E1, P_Base_Type);
 
-      ----------------
-      -- Model_Emin --
-      ----------------
-
-      when Attribute_Model_Emin =>
-         Check_Floating_Point_Type_0;
-         Set_Etype (N, Universal_Integer);
-
-      -------------------
-      -- Model_Epsilon --
-      -------------------
-
-      when Attribute_Model_Epsilon =>
-         Check_Floating_Point_Type_0;
-         Set_Etype (N, Universal_Real);
-
-      --------------------
-      -- Model_Mantissa --
-      --------------------
-
-      when Attribute_Model_Mantissa =>
-         Check_Floating_Point_Type_0;
-         Set_Etype (N, Universal_Integer);
-
-      -----------------
-      -- Model_Small --
-      -----------------
-
-      when Attribute_Model_Small =>
-         Check_Floating_Point_Type_0;
-         Set_Etype (N, Universal_Real);
-
       -------------
       -- Modulus --
       -------------
@@ -2408,99 +1977,6 @@ package body Sem_Attr is
 
          Set_Etype (N, Universal_Integer);
 
-      --------------------
-      -- Null_Parameter --
-      --------------------
-
-      when Attribute_Null_Parameter => Null_Parameter : declare
-         Parnt  : constant Node_Id := Parent (N);
-         GParnt : constant Node_Id := Parent (Parnt);
-
-         procedure Bad_Null_Parameter (Msg : String);
-         --  Used if bad Null parameter attribute node is found. Issues
-         --  given error message, and also sets the type to Any_Type to
-         --  avoid blowups later on from dealing with a junk node.
-
-         procedure Must_Be_Imported (Proc_Ent : Entity_Id);
-         --  Called to check that Proc_Ent is imported subprogram
-
-         ------------------------
-         -- Bad_Null_Parameter --
-         ------------------------
-
-         procedure Bad_Null_Parameter (Msg : String) is
-         begin
-            Error_Msg_N (Msg, N);
-            Set_Etype (N, Any_Type);
-         end Bad_Null_Parameter;
-
-         ----------------------
-         -- Must_Be_Imported --
-         ----------------------
-
-         procedure Must_Be_Imported (Proc_Ent : Entity_Id) is
-            Pent : Entity_Id := Proc_Ent;
-
-         begin
-            while Present (Alias (Pent)) loop
-               Pent := Alias (Pent);
-            end loop;
-
-            --  Ignore check if procedure not frozen yet (we will get
-            --  another chance when the default parameter is reanalyzed)
-
-            if not Is_Frozen (Pent) then
-               return;
-
-            elsif not Is_Imported (Pent) then
-               Bad_Null_Parameter
-                 ("Null_Parameter can only be used with imported subprogram");
-
-            else
-               return;
-            end if;
-         end Must_Be_Imported;
-
-      --  Start of processing for Null_Parameter
-
-      begin
-         Check_Type;
-         Check_E0;
-         Set_Etype (N, P_Type);
-
-         --  Case of attribute used as default expression
-
-         if Nkind (Parnt) = N_Parameter_Specification then
-            Must_Be_Imported (Defining_Entity (GParnt));
-
-         --  Case of attribute used as actual for subprogram (positional)
-
-         elsif (Nkind (Parnt) = N_Procedure_Call_Statement
-                 or else
-                Nkind (Parnt) = N_Function_Call)
-            and then Is_Entity_Name (Name (Parnt))
-         then
-            Must_Be_Imported (Entity (Name (Parnt)));
-
-         --  Case of attribute used as actual for subprogram (named)
-
-         elsif Nkind (Parnt) = N_Parameter_Association
-           and then (Nkind (GParnt) = N_Procedure_Call_Statement
-                       or else
-                     Nkind (GParnt) = N_Function_Call)
-           and then Is_Entity_Name (Name (GParnt))
-         then
-            Must_Be_Imported (Entity (Name (GParnt)));
-
-         --  Not an allowed case
-
-         else
-            Bad_Null_Parameter
-              ("Null_Parameter must be actual or default parameter");
-         end if;
-
-      end Null_Parameter;
-
       -----------------
       -- Object_Size --
       -----------------
@@ -2509,38 +1985,6 @@ package body Sem_Attr is
          Check_E0;
          Check_Type;
          Check_Not_Incomplete_Type;
-         Set_Etype (N, Universal_Integer);
-
-      ------------
-      -- Output --
-      ------------
-
-      when Attribute_Output => null;
-
-      ------------------
-      -- Partition_ID --
-      ------------------
-
-      when Attribute_Partition_ID =>
-         Check_E0;
-
-         if P_Type /= Any_Type then
-            if not Is_Library_Level_Entity (Entity (P)) then
-               Error_Attr
-                 ("prefix of % attribute must be library-level entity", P);
-
-            --  The defining entity of prefix should not be declared inside
-            --  a Pure unit. RM E.1(8).
-            --  The Is_Pure flag has been set during declaration.
-
-            elsif Is_Entity_Name (P)
-              and then Is_Pure (Entity (P))
-            then
-               Error_Attr
-                 ("prefix of % attribute must not be declared pure", P);
-            end if;
-         end if;
-
          Set_Etype (N, Universal_Integer);
 
       -------------------------
@@ -2578,31 +2022,6 @@ package body Sem_Attr is
          Check_Component;
          Set_Etype (N, Universal_Integer);
 
-      ----------
-      -- Pred --
-      ----------
-
-      when Attribute_Pred =>
-         Check_Scalar_Type;
-         Check_E1;
-         Resolve (E1, P_Base_Type);
-         Set_Etype (N, P_Base_Type);
-
-         --  Nothing to do for real type case
-
-         if Is_Real_Type (P_Type) then
-            null;
-
-         --  If not modular type, test for overflow check required
-
-         else
---              if not Is_Modular_Integer_Type (P_Type)
---                and then not Range_Checks_Suppressed (P_Base_Type)
---              then
---                 Enable_Range_Check (E1);
---              end if;
-null;         end if;
-
       -----------
       -- Range --
       -----------
@@ -2617,12 +2036,6 @@ null;         end if;
       when Attribute_Range_Length =>
          Check_Discrete_Type;
          Set_Etype (N, Universal_Integer);
-
-      ----------
-      -- Read --
-      ----------
-
-      when Attribute_Read => null;
 
       ---------------
       -- Remainder --
@@ -2670,48 +2083,6 @@ null;         end if;
          Set_Etype (N, P_Base_Type);
          Resolve (E1, P_Base_Type);
 
-      ---------------
-      -- Safe_Emax --
-      ---------------
-
-      when Attribute_Safe_Emax =>
-         Check_Floating_Point_Type_0;
-         Set_Etype (N, Universal_Integer);
-
-      ----------------
-      -- Safe_First --
-      ----------------
-
-      when Attribute_Safe_First =>
-         Check_Floating_Point_Type_0;
-         Set_Etype (N, Universal_Real);
-
-      ----------------
-      -- Safe_Large --
-      ----------------
-
-      when Attribute_Safe_Large =>
-         Check_E0;
-         Check_Real_Type;
-         Set_Etype (N, Universal_Real);
-
-      ---------------
-      -- Safe_Last --
-      ---------------
-
-      when Attribute_Safe_Last =>
-         Check_Floating_Point_Type_0;
-         Set_Etype (N, Universal_Real);
-
-      ----------------
-      -- Safe_Small --
-      ----------------
-
-      when Attribute_Safe_Small =>
-         Check_E0;
-         Check_Real_Type;
-         Set_Etype (N, Universal_Real);
-
       -----------
       -- Scale --
       -----------
@@ -2730,19 +2101,11 @@ null;         end if;
          Set_Etype (N, P_Base_Type);
          Resolve (E1, P_Base_Type);
 
-      ------------------
-      -- Signed_Zeros --
-      ------------------
-
-      when Attribute_Signed_Zeros =>
-         Check_Floating_Point_Type_0;
-         Set_Etype (N, Standard_Boolean);
-
       ----------
       -- Size --
       ----------
 
-      when Attribute_Size | Attribute_VADS_Size =>
+      when Attribute_Size =>
          Check_E0;
 
          if Is_Object_Reference (P)
@@ -2768,15 +2131,6 @@ null;         end if;
          Check_Not_Incomplete_Type;
          Set_Etype (N, Universal_Integer);
 
-      -----------
-      -- Small --
-      -----------
-
-      when Attribute_Small =>
-         Check_E0;
-         Check_Real_Type;
-         Set_Etype (N, Universal_Real);
-
       ------------------
       -- Storage_Pool --
       ------------------
@@ -2794,12 +2148,6 @@ null;         end if;
             end if;
 
             Set_Etype (N, Class_Wide_Type (RTE (RE_Root_Storage_Pool)));
-
-            --  Validate_Remote_Access_To_Class_Wide_Type for attribute
-            --  Storage_Pool since this attribute is not defined for such
-            --  types (RM E.2.3(22)).
-
-            Validate_Remote_Access_To_Class_Wide_Type (N);
 
          else
             Error_Attr ("prefix of % attribute must be access type", P);
@@ -2819,11 +2167,6 @@ null;         end if;
                Check_Type;
                Set_Etype (N, Universal_Integer);
 
-               --   Validate_Remote_Access_To_Class_Wide_Type for attribute
-               --   Storage_Size since this attribute is not defined for
-               --   such types (RM E.2.3(22)).
-
-               Validate_Remote_Access_To_Class_Wide_Type (N);
             end if;
          end if;
 
@@ -2920,7 +2263,7 @@ null;         end if;
             Error_Attr ("prefix of %attribute must be System", P);
          end if;
 
-         Generate_Reference (RTE (RE_Address), P);
+--         Generate_Reference (RTE (RE_Address), P);
          Analyze_And_Resolve (E1, Any_Integer);
          Set_Etype (N, RTE (RE_Address));
 
@@ -2942,15 +2285,6 @@ null;         end if;
          Check_Type;
          Check_Not_Incomplete_Type;
          Set_Etype (N, RTE (RE_Type_Class));
-
-      -----------------
-      -- UET_Address --
-      -----------------
-
-      when Attribute_UET_Address =>
-         Check_E0;
-         Check_Unit_Name (P);
-         Set_Etype (N, RTE (RE_Address));
 
       -----------------------
       -- Unbiased_Rounding --
@@ -3137,15 +2471,6 @@ null;         end if;
          Check_Not_Incomplete_Type;
          Set_Etype (N, Universal_Integer);
 
-      -------------
-      -- Version --
-      -------------
-
-      when Attribute_Version =>
-         Check_E0;
-         Check_Program_Unit;
-         Set_Etype (N, RTE (RE_Version_String));
-
       ------------------
       -- Wchar_T_Size --
       ------------------
@@ -3182,24 +2507,6 @@ null;         end if;
          Validate_Non_Static_Attribute_Function_Call;
       end Wide_Value;
 
-      ----------------
-      -- Wide_Width --
-      ----------------
-
-      when Attribute_Wide_Width =>
-         Check_E0;
-         Check_Scalar_Type;
-         Set_Etype (N, Universal_Integer);
-
-      -----------
-      -- Width --
-      -----------
-
-      when Attribute_Width =>
-         Check_E0;
-         Check_Scalar_Type;
-         Set_Etype (N, Universal_Integer);
-
       ---------------
       -- Word_Size --
       ---------------
@@ -3208,11 +2515,6 @@ null;         end if;
          Standard_Attribute (System_Word_Size);
 
       -----------
-      -- Write --
-      -----------
-
-      when Attribute_Write => null;
-
       end case;
 
    --  All errors raise Bad_Attribute, so that we get out before any further
@@ -3267,7 +2569,7 @@ null;         end if;
       --  Expressions for low and high bounds of type or array index referenced
       --  by First, Last, or Length attribute for array, set by Set_Bounds.
 
-      CE_Node : Node_Id;
+      ------------CE_Node : Node_Id;
       --  Constraint error node used if we have an attribute reference has
       --  an argument that raises a constraint error. In this case we replace
       --  the attribute with a raise constraint_error node. This is important
@@ -3808,11 +3110,7 @@ null;         end if;
       --  applies to the GNAT attributes Has_Discriminants, Type_Class,
       --  and Unconstrained_Array.
 
-      elsif (Id = Attribute_Definite
-               or else
-             Id = Attribute_Has_Discriminants
-               or else
-             Id = Attribute_Type_Class
+      elsif (Id = Attribute_Type_Class
                or else
              Id = Attribute_Unconstrained_Array)
         and then not Is_Generic_Type (P_Entity)
@@ -3855,10 +3153,6 @@ null;         end if;
       elsif Attribute_Name (N) = Name_Access
         and then Raises_Constraint_Error (N)
       then
-         Rewrite (N,
-            Make_Raise_Program_Error (Loc,
-              Reason => PE_Accessibility_Check_Failed));
-         Set_Etype (N, C_Type);
          return;
 
       --  No other cases are foldable (they certainly aren't static, and at
@@ -3920,11 +3214,7 @@ null;         end if;
       --  Definite, Has_Discriminants, Type_Class and Unconstrained_Array are
       --  again exceptions, because they apply as well to unconstrained types.
 
-      elsif Id = Attribute_Definite
-              or else
-            Id = Attribute_Has_Discriminants
-              or else
-            Id = Attribute_Type_Class
+      elsif Id = Attribute_Type_Class
               or else
             Id = Attribute_Unconstrained_Array
       then
@@ -4047,14 +3337,6 @@ null;         end if;
       --  to avoid spurious errors in the enclosing expression.
 
       if Raises_Constraint_Error (N) then
-         CE_Node :=
-           Make_Raise_Constraint_Error (Sloc (N),
-             Reason => CE_Range_Check_Failed);
-         Set_Etype (CE_Node, Etype (N));
-         Set_Raises_Constraint_Error (CE_Node);
-         Check_Expressions;
-         Rewrite (N, Relocate_Node (CE_Node));
-         Set_Is_Static_Expression (N, Static);
          return;
       end if;
 
@@ -4076,21 +3358,6 @@ null;         end if;
 
       case Id is
 
-      --------------
-      -- Adjacent --
-      --------------
-
-      when Attribute_Adjacent =>
-         Fold_Ureal (N,
-           Eval_Fat.Adjacent
-             (P_Root_Type, Expr_Value_R (E1), Expr_Value_R (E2)), Static);
-
-      ---------
-      -- Aft --
-      ---------
-
-      when Attribute_Aft => null;
-
       ---------------
       -- Alignment --
       ---------------
@@ -4106,14 +3373,6 @@ null;         end if;
          end if;
       end Alignment_Block;
 
-      ---------------
-      -- AST_Entry --
-      ---------------
-
-      --  Can only be folded in No_Ast_Handler case
-
-      when Attribute_AST_Entry => null;
-
       ---------
       -- Bit --
       ---------
@@ -4122,23 +3381,6 @@ null;         end if;
 
       when Attribute_Bit =>
          null;
-
-      ------------------
-      -- Body_Version --
-      ------------------
-
-      --  Body_version can never be static
-
-      when Attribute_Body_Version =>
-         null;
-
-      -------------
-      -- Ceiling --
-      -------------
-
-      when Attribute_Ceiling =>
-         Fold_Ureal (N,
-           Eval_Fat.Ceiling (P_Root_Type, Expr_Value_R (E1)), Static);
 
       --------------------
       -- Component_Size --
@@ -4149,16 +3391,6 @@ null;         end if;
             Fold_Uint (N, Component_Size (P_Type), False);
          end if;
 
-      -------------
-      -- Compose --
-      -------------
-
-      when Attribute_Compose =>
-         Fold_Ureal (N,
-           Eval_Fat.Compose
-             (P_Root_Type, Expr_Value_R (E1), Expr_Value (E2)),
-              Static);
-
       -----------------
       -- Constrained --
       -----------------
@@ -4168,66 +3400,6 @@ null;         end if;
 
       when Attribute_Constrained =>
          null;
-
-      ---------------
-      -- Copy_Sign --
-      ---------------
-
-      when Attribute_Copy_Sign =>
-         Fold_Ureal (N,
-           Eval_Fat.Copy_Sign
-             (P_Root_Type, Expr_Value_R (E1), Expr_Value_R (E2)), Static);
-
-      -----------
-      -- Delta --
-      -----------
-
-      when Attribute_Delta => null;
-
-      --------------
-      -- Definite --
-      --------------
-
-      when Attribute_Definite =>
-         declare
-            Result : Node_Id;
-
-         begin
-            if Is_Indefinite_Subtype (P_Entity) then
-               Result := New_Occurrence_Of (Standard_False, Loc);
-            else
-               Result := New_Occurrence_Of (Standard_True, Loc);
-            end if;
-
-            Rewrite (N, Result);
-            Analyze_And_Resolve (N, Standard_Boolean);
-         end;
-
-      ------------
-      -- Denorm --
-      ------------
-
-      when Attribute_Denorm =>
-         Fold_Uint
-           (N, UI_From_Int (Boolean'Pos (Denorm_On_Target)), True);
-
-      ------------
-      -- Digits --
-      ------------
-
-      when Attribute_Digits => null;
-
-      ----------
-      -- Emax --
-      ----------
-
-      when Attribute_Emax =>
-
-         --  Ada 83 attribute is defined as (RM83 3.5.8)
-
-         --    T'Emax = 4 * T'Mantissa
-
-         Fold_Uint (N, 4 * Mantissa, True);
 
       --------------
       -- Enum_Rep --
@@ -4255,18 +3427,6 @@ null;         end if;
             Fold_Uint (N, Expr_Value (E1), Static);
          end if;
 
-      -------------
-      -- Epsilon --
-      -------------
-
-      when Attribute_Epsilon =>
-
-         --  Ada 83 attribute is defined as (RM83 3.5.8)
-
-         --    T'Epsilon = 2.0**(1 - T'Mantissa)
-
-         Fold_Ureal (N, Ureal_2 ** (1 - Mantissa), True);
-
       --------------
       -- Exponent --
       --------------
@@ -4292,13 +3452,6 @@ null;         end if;
          end if;
       end First_Attr;
 
-      -----------------
-      -- Fixed_Value --
-      -----------------
-
-      when Attribute_Fixed_Value =>
-         null;
-
       -----------
       -- Floor --
       -----------
@@ -4323,19 +3476,6 @@ null;         end if;
       when Attribute_Fraction =>
          Fold_Ureal (N,
            Eval_Fat.Fraction (P_Root_Type, Expr_Value_R (E1)), Static);
-
-      -----------------------
-      -- Has_Discriminants --
-      -----------------------
-
-      when Attribute_Has_Discriminants => null;
-
-      --------------
-      -- Identity --
-      --------------
-
-      when Attribute_Identity =>
-         null;
 
       -----------
       -- Image --
@@ -4364,30 +3504,6 @@ null;         end if;
       when Attribute_Integer_Value =>
          null;
 
-      -----------
-      -- Large --
-      -----------
-
-      when Attribute_Large =>
-
-         --  For fixed-point, we use the identity:
-
-         --    T'Large = (2.0**T'Mantissa - 1.0) * T'Small
-
-         --  Floating-point (Ada 83 compatibility)
-
-            --  Ada 83 attribute is defined as (RM83 3.5.8)
-
-            --    T'Large = 2.0**T'Emax * (1.0 - 2.0**(-T'Mantissa))
-
-            --  where
-
-            --    T'Emax = 4 * T'Mantissa
-
-            Fold_Ureal (N,
-              Ureal_2 ** (4 * Mantissa) * (Ureal_1 - Ureal_2 ** (-Mantissa)),
-              True);
-
       ----------
       -- Last --
       ----------
@@ -4404,15 +3520,6 @@ null;         end if;
             end if;
          end if;
       end Last;
-
-      ------------------
-      -- Leading_Part --
-      ------------------
-
-      when Attribute_Leading_Part =>
-         Fold_Ureal (N,
-           Eval_Fat.Leading_Part
-             (P_Root_Type, Expr_Value_R (E1), Expr_Value (E2)), Static);
 
       ------------
       -- Length --
@@ -4446,16 +3553,6 @@ null;         end if;
               True);
          end if;
       end Length;
-
-      -------------
-      -- Machine --
-      -------------
-
-      when Attribute_Machine =>
-         Fold_Ureal (N,
-           Eval_Fat.Machine
-             (P_Root_Type, Expr_Value_R (E1), Eval_Fat.Round, N),
-           Static);
 
       ------------------
       -- Machine_Emax --
@@ -4589,35 +3686,6 @@ null;         end if;
                Static);
          end if;
 
-      --------------------
-      -- Mechanism_Code --
-      --------------------
-
-      when Attribute_Mechanism_Code =>
-         declare
-            Val    : Int;
-            Formal : Entity_Id;
-            Mech   : Mechanism_Type;
-
-         begin
-            if No (E1) then
-               Mech := Mechanism (P_Entity);
-
-            else
-               Val := UI_To_Int (Expr_Value (E1));
-
-               Formal := First_Formal (P_Entity);
-               for J in 1 .. Val - 1 loop
-                  Next_Formal (Formal);
-               end loop;
-               Mech := Mechanism (Formal);
-            end if;
-
-            if Mech < 0 then
-               Fold_Uint (N, UI_From_Int (Int (-Mech)), True);
-            end if;
-         end;
-
       ---------
       -- Min --
       ---------
@@ -4640,83 +3708,12 @@ null;         end if;
          Fold_Ureal (N,
            Eval_Fat.Model (P_Root_Type, Expr_Value_R (E1)), Static);
 
-      ----------------
-      -- Model_Emin --
-      ----------------
-
-      when Attribute_Model_Emin =>
-         Float_Attribute_Universal_Integer (
-           IEEES_Model_Emin,
-           IEEEL_Model_Emin,
-           IEEEX_Model_Emin,
-           VAXFF_Model_Emin,
-           VAXDF_Model_Emin,
-           VAXGF_Model_Emin,
-           AAMPS_Model_Emin,
-           AAMPL_Model_Emin);
-
-      -------------------
-      -- Model_Epsilon --
-      -------------------
-
-      when Attribute_Model_Epsilon =>
-         Float_Attribute_Universal_Real (
-           IEEES_Model_Epsilon'Universal_Literal_String,
-           IEEEL_Model_Epsilon'Universal_Literal_String,
-           IEEEX_Model_Epsilon'Universal_Literal_String,
-           VAXFF_Model_Epsilon'Universal_Literal_String,
-           VAXDF_Model_Epsilon'Universal_Literal_String,
-           VAXGF_Model_Epsilon'Universal_Literal_String,
-           AAMPS_Model_Epsilon'Universal_Literal_String,
-           AAMPL_Model_Epsilon'Universal_Literal_String);
-
-      --------------------
-      -- Model_Mantissa --
-      --------------------
-
-      when Attribute_Model_Mantissa =>
-         Float_Attribute_Universal_Integer (
-           IEEES_Model_Mantissa,
-           IEEEL_Model_Mantissa,
-           IEEEX_Model_Mantissa,
-           VAXFF_Model_Mantissa,
-           VAXDF_Model_Mantissa,
-           VAXGF_Model_Mantissa,
-           AAMPS_Model_Mantissa,
-           AAMPL_Model_Mantissa);
-
-      -----------------
-      -- Model_Small --
-      -----------------
-
-      when Attribute_Model_Small =>
-         Float_Attribute_Universal_Real (
-           IEEES_Model_Small'Universal_Literal_String,
-           IEEEL_Model_Small'Universal_Literal_String,
-           IEEEX_Model_Small'Universal_Literal_String,
-           VAXFF_Model_Small'Universal_Literal_String,
-           VAXDF_Model_Small'Universal_Literal_String,
-           VAXGF_Model_Small'Universal_Literal_String,
-           AAMPS_Model_Small'Universal_Literal_String,
-           AAMPL_Model_Small'Universal_Literal_String);
-
       -------------
       -- Modulus --
       -------------
 
       when Attribute_Modulus =>
          Fold_Uint (N, Modulus (P_Type), True);
-
-      --------------------
-      -- Null_Parameter --
-      --------------------
-
-      --  Cannot fold, we know the value sort of, but the whole point is
-      --  that there is no way to talk about this imaginary value except
-      --  by using the attribute, so we leave it the way it is.
-
-      when Attribute_Null_Parameter =>
-         null;
 
       -----------------
       -- Object_Size --
@@ -4754,39 +3751,40 @@ null;         end if;
       -- Pred --
       ----------
 
-      when Attribute_Pred => Pred :
-      begin
-         --  Floating-point case
-
-         if Is_Floating_Point_Type (P_Type) then
-            Fold_Ureal (N,
-              Eval_Fat.Pred (P_Root_Type, Expr_Value_R (E1)), Static);
-
-         elsif Is_Modular_Integer_Type (P_Type) then
-            Fold_Uint (N, (Expr_Value (E1) - 1) mod Modulus (P_Type), Static);
-
-         --  Other scalar cases
-
-         else
-            pragma Assert (Is_Scalar_Type (P_Type));
-
-            if Is_Enumeration_Type (P_Type)
-              and then Expr_Value (E1) =
-                         Expr_Value (Type_Low_Bound (P_Base_Type))
-            then
-               Apply_Compile_Time_Constraint_Error
-                 (N, "Pred of `&''First`",
-                  CE_Overflow_Check_Failed,
-                  Ent  => P_Base_Type,
-                  Warn => not Static);
-
-               Check_Expressions;
-               return;
-            end if;
-
-            Fold_Uint (N, Expr_Value (E1) - 1, Static);
-         end if;
-      end Pred;
+--      when Attribute_Pred => 
+--           Pred :
+--        begin
+--           --  Floating-point case
+--  
+--           if Is_Floating_Point_Type (P_Type) then
+--              Fold_Ureal (N,
+--                Eval_Fat.Pred (P_Root_Type, Expr_Value_R (E1)), Static);
+--  
+--           elsif Is_Modular_Integer_Type (P_Type) then
+--              Fold_Uint (N, (Expr_Value (E1) - 1) mod Modulus (P_Type), Static);
+--  
+--           --  Other scalar cases
+--  
+--           else
+--              pragma Assert (Is_Scalar_Type (P_Type));
+--  
+--              if Is_Enumeration_Type (P_Type)
+--                and then Expr_Value (E1) =
+--                           Expr_Value (Type_Low_Bound (P_Base_Type))
+--              then
+--                 Apply_Compile_Time_Constraint_Error
+--                   (N, "Pred of `&''First`",
+--                    CE_Overflow_Check_Failed,
+--                    Ent  => P_Base_Type,
+--                    Warn => not Static);
+--  
+--                 Check_Expressions;
+--                 return;
+--              end if;
+--  
+--              Fold_Uint (N, Expr_Value (E1) - 1, Static);
+--           end if;
+--        end Pred;
 
       -----------
       -- Range --
@@ -4855,82 +3853,6 @@ null;         end if;
          Fold_Ureal (N,
            Eval_Fat.Rounding (P_Root_Type, Expr_Value_R (E1)), Static);
 
-      ---------------
-      -- Safe_Emax --
-      ---------------
-
-      when Attribute_Safe_Emax =>
-         Float_Attribute_Universal_Integer (
-           IEEES_Safe_Emax,
-           IEEEL_Safe_Emax,
-           IEEEX_Safe_Emax,
-           VAXFF_Safe_Emax,
-           VAXDF_Safe_Emax,
-           VAXGF_Safe_Emax,
-           AAMPS_Safe_Emax,
-           AAMPL_Safe_Emax);
-
-      ----------------
-      -- Safe_First --
-      ----------------
-
-      when Attribute_Safe_First =>
-         Float_Attribute_Universal_Real (
-           IEEES_Safe_First'Universal_Literal_String,
-           IEEEL_Safe_First'Universal_Literal_String,
-           IEEEX_Safe_First'Universal_Literal_String,
-           VAXFF_Safe_First'Universal_Literal_String,
-           VAXDF_Safe_First'Universal_Literal_String,
-           VAXGF_Safe_First'Universal_Literal_String,
-           AAMPS_Safe_First'Universal_Literal_String,
-           AAMPL_Safe_First'Universal_Literal_String);
-
-      ----------------
-      -- Safe_Large --
-      ----------------
-
-      when Attribute_Safe_Large =>
-            Float_Attribute_Universal_Real (
-              IEEES_Safe_Large'Universal_Literal_String,
-              IEEEL_Safe_Large'Universal_Literal_String,
-              IEEEX_Safe_Large'Universal_Literal_String,
-              VAXFF_Safe_Large'Universal_Literal_String,
-              VAXDF_Safe_Large'Universal_Literal_String,
-              VAXGF_Safe_Large'Universal_Literal_String,
-              AAMPS_Safe_Large'Universal_Literal_String,
-              AAMPL_Safe_Large'Universal_Literal_String);
-
-      ---------------
-      -- Safe_Last --
-      ---------------
-
-      when Attribute_Safe_Last =>
-         Float_Attribute_Universal_Real (
-           IEEES_Safe_Last'Universal_Literal_String,
-           IEEEL_Safe_Last'Universal_Literal_String,
-           IEEEX_Safe_Last'Universal_Literal_String,
-           VAXFF_Safe_Last'Universal_Literal_String,
-           VAXDF_Safe_Last'Universal_Literal_String,
-           VAXGF_Safe_Last'Universal_Literal_String,
-           AAMPS_Safe_Last'Universal_Literal_String,
-           AAMPL_Safe_Last'Universal_Literal_String);
-
-      ----------------
-      -- Safe_Small --
-      ----------------
-
-      when Attribute_Safe_Small =>
-
-            Float_Attribute_Universal_Real (
-              IEEES_Safe_Small'Universal_Literal_String,
-              IEEEL_Safe_Small'Universal_Literal_String,
-              IEEEX_Safe_Small'Universal_Literal_String,
-              VAXFF_Safe_Small'Universal_Literal_String,
-              VAXDF_Safe_Small'Universal_Literal_String,
-              VAXGF_Safe_Small'Universal_Literal_String,
-              AAMPS_Safe_Small'Universal_Literal_String,
-              AAMPL_Safe_Small'Universal_Literal_String);
-
       -----------
       -- Scale --
       -----------
@@ -4947,14 +3869,6 @@ null;         end if;
            Eval_Fat.Scaling
              (P_Root_Type, Expr_Value_R (E1), Expr_Value (E2)), Static);
 
-      ------------------
-      -- Signed_Zeros --
-      ------------------
-
-      when Attribute_Signed_Zeros =>
-         Fold_Uint
-           (N, UI_From_Int (Boolean'Pos (Signed_Zeros_On_Target)), Static);
-
       ----------
       -- Size --
       ----------
@@ -4963,84 +3877,19 @@ null;         end if;
       --  as well as any types for which the size is known by the front end,
       --  including any type for which a size attribute is specified.
 
-      when Attribute_Size | Attribute_VADS_Size => Size : declare
+      when Attribute_Size => Size : declare
          P_TypeA : constant Entity_Id := Underlying_Type (P_Type);
 
       begin
          if RM_Size (P_TypeA) /= Uint_0 then
 
-            --  VADS_Size case
-
-            if Id = Attribute_VADS_Size or else Use_VADS_Size then
-               declare
-                  S : constant Node_Id := Size_Clause (P_TypeA);
-
-               begin
-                  --  If a size clause applies, then use the size from it.
-                  --  This is one of the rare cases where we can use the
-                  --  Size_Clause field for a subtype when Has_Size_Clause
-                  --  is False. Consider:
-
-                  --    type x is range 1 .. 64;                         g
-                  --    for x'size use 12;
-                  --    subtype y is x range 0 .. 3;
-
-                  --  Here y has a size clause inherited from x, but normally
-                  --  it does not apply, and y'size is 2. However, y'VADS_Size
-                  --  is indeed 12 and not 2.
-
-                  if Present (S)
-                    and then Is_OK_Static_Expression (Expression (S))
-                  then
-                     Fold_Uint (N, Expr_Value (Expression (S)), True);
-
-                  --  If no size is specified, then we simply use the object
-                  --  size in the VADS_Size case (e.g. Natural'Size is equal
-                  --  to Integer'Size, not one less).
-
-                  else
-                     Fold_Uint (N, Esize (P_TypeA), True);
-                  end if;
-               end;
-
             --  Normal case (Size) in which case we want the RM_Size
 
-            else
-               Fold_Uint (N,
-                 RM_Size (P_TypeA),
-                 Static and then Is_Discrete_Type (P_TypeA));
-            end if;
+	    Fold_Uint (N,
+		       RM_Size (P_TypeA),
+		       Static and then Is_Discrete_Type (P_TypeA));
          end if;
       end Size;
-
-      -----------
-      -- Small --
-      -----------
-
-      when Attribute_Small =>
-
-         --  The floating-point case is present only for Ada 83 compatability.
-         --  Note that strictly this is an illegal addition, since we are
-         --  extending an Ada 95 defined attribute, but we anticipate an
-         --  ARG ruling that will permit this.
-
-         if Is_Floating_Point_Type (P_Type) then
-
-            --  Ada 83 attribute is defined as (RM83 3.5.8)
-
-            --    T'Small = 2.0**(-T'Emax - 1)
-
-            --  where
-
-            --    T'Emax = 4 * T'Mantissa
-
-            Fold_Ureal (N, Ureal_2 ** ((-(4 * Mantissa)) - 1), Static);
-
-         --  Normal Ada 95 fixed-point case
-
-         else
-            Fold_Ureal (N, Small_Value (P_Type), True);
-         end if;
 
       ----------
       -- Succ --
@@ -5099,10 +3948,7 @@ null;         end if;
          Id  : RE_Id;
 
       begin
-         if Is_RTE (P_Root_Type, RE_Address) then
-            Id := RE_Type_Class_Address;
-
-         elsif Is_Enumeration_Type (Typ) then
+         if Is_Enumeration_Type (Typ) then
             Id := RE_Type_Class_Enumeration;
 
          elsif Is_Integer_Type (Typ) then
@@ -5166,12 +4012,6 @@ null;         end if;
          Static := True;
       end Unconstrained_Array;
 
-      ---------------
-      -- VADS_Size --
-      ---------------
-
-      --  Processing is shared with Size
-
       ---------
       -- Val --
       ---------
@@ -5213,15 +4053,6 @@ null;         end if;
 
       end Value_Size;
 
-      -------------
-      -- Version --
-      -------------
-
-      --  Version can never be static
-
-      when Attribute_Version =>
-         null;
-
       ----------------
       -- Wide_Image --
       ----------------
@@ -5238,251 +4069,21 @@ null;         end if;
 
       --  Processing for Wide_Width is combined with Width
 
-      -----------
-      -- Width --
-      -----------
-
-      --  This processing also handles the case of Wide_Width
-
-      when Attribute_Width | Attribute_Wide_Width => Width :
-      begin
-         if Compile_Time_Known_Bounds (P_Type) then
-
-            --  Floating-point types
-
-            if Is_Floating_Point_Type (P_Type) then
-
-               --  Width is zero for a null range (RM 3.5 (38))
-
-               if Expr_Value_R (Type_High_Bound (P_Type)) <
-                  Expr_Value_R (Type_Low_Bound (P_Type))
-               then
-                  Fold_Uint (N, Uint_0, True);
-
-               else
-                  --  For floating-point, we have +N.dddE+nnn where length
-                  --  of ddd is determined by type'Digits - 1, but is one
-                  --  if Digits is one (RM 3.5 (33)).
-
-                  --  nnn is set to 2 for Short_Float and Float (32 bit
-                  --  floats), and 3 for Long_Float and Long_Long_Float.
-                  --  This is not quite right, but is good enough.
-
-                  declare
-                     Len : Int :=
-                             Int'Max (2, UI_To_Int (Digits_Value (P_Type)));
-
-                  begin
-                     if Esize (P_Type) <= 32 then
-                        Len := Len + 6;
-                     else
-                        Len := Len + 7;
-                     end if;
-
-                     Fold_Uint (N, UI_From_Int (Len), True);
-                  end;
-               end if;
-
-            --  Discrete types
-
-            else
-               declare
-                  R  : constant Entity_Id := Root_Type (P_Type);
-                  Lo : constant Uint :=
-                         Expr_Value (Type_Low_Bound (P_Type));
-                  Hi : constant Uint :=
-                         Expr_Value (Type_High_Bound (P_Type));
-                  W  : Nat;
-                  Wt : Nat;
-                  T  : Uint;
-                  L  : Node_Id;
-                  C  : Character;
-
-               begin
-                  --  Empty ranges
-
-                  if Lo > Hi then
-                     W := 0;
-
-                  --  Width for types derived from Standard.Character
-                  --  and Standard.Wide_Character.
-
-                  elsif R = Standard_Character
-                    or else R = Standard_Wide_Character
-                  then
-                     W := 0;
-
-                     --  Set W larger if needed
-
-                     for J in UI_To_Int (Lo) .. UI_To_Int (Hi) loop
-
-                        --  Assume all wide-character escape sequences are
-                        --  same length, so we can quit when we reach one.
-
-                        if J > 255 then
-                           if Id = Attribute_Wide_Width then
-                              W := Int'Max (W, 3);
-                              exit;
-                           else
-                              W := Int'Max (W, Length_Wide);
-                              exit;
-                           end if;
-
-                        else
-                           C := Character'Val (J);
-
-                           --  Test for all cases where Character'Image
-                           --  yields an image that is longer than three
-                           --  characters. First the cases of Reserved_xxx
-                           --  names (length = 12).
-
-                           case C is
-                              when Reserved_128 | Reserved_129 |
-                                   Reserved_132 | Reserved_153
-
-                                => Wt := 12;
-
-                              when BS | HT | LF | VT | FF | CR |
-                                   SO | SI | EM | FS | GS | RS |
-                                   US | RI | MW | ST | PM
-
-                                => Wt := 2;
-
-                              when NUL | SOH | STX | ETX | EOT |
-                                   ENQ | ACK | BEL | DLE | DC1 |
-                                   DC2 | DC3 | DC4 | NAK | SYN |
-                                   ETB | CAN | SUB | ESC | DEL |
-                                   BPH | NBH | NEL | SSA | ESA |
-                                   HTS | HTJ | VTS | PLD | PLU |
-                                   SS2 | SS3 | DCS | PU1 | PU2 |
-                                   STS | CCH | SPA | EPA | SOS |
-                                   SCI | CSI | OSC | APC
-
-                                => Wt := 3;
-
-                              when Space .. Tilde |
-                                   No_Break_Space .. LC_Y_Diaeresis
-
-                                => Wt := 3;
-                           end case;
-
-                           W := Int'Max (W, Wt);
-                        end if;
-                     end loop;
-
-                  --  Width for types derived from Standard.Boolean
-
-                  elsif R = Standard_Boolean then
-                     if Lo = 0 then
-                        W := 5; -- FALSE
-                     else
-                        W := 4; -- TRUE
-                     end if;
-
-                  --  Width for integer types
-
-                  elsif Is_Integer_Type (P_Type) then
-                     T := UI_Max (abs Lo, abs Hi);
-
-                     W := 2;
-                     while T >= 10 loop
-                        W := W + 1;
-                        T := T / 10;
-                     end loop;
-
-                  --  Only remaining possibility is user declared enum type
-
-                  else
-                     pragma Assert (Is_Enumeration_Type (P_Type));
-
-                     W := 0;
-                     L := First_Literal (P_Type);
-
-                     while Present (L) loop
-
-                        --  Only pay attention to in range characters
-
-                        if Lo <= Enumeration_Pos (L)
-                          and then Enumeration_Pos (L) <= Hi
-                        then
-                           --  For Width case, use decoded name
-
-                           if Id = Attribute_Width then
-                              Get_Decoded_Name_String (Chars (L));
-                              Wt := Nat (Name_Len);
-
-                           --  For Wide_Width, use encoded name, and then
-                           --  adjust for the encoding.
-
-                           else
-                              Get_Name_String (Chars (L));
-
-                              --  Character literals are always of length 3
-
-                              if Name_Buffer (1) = 'Q' then
-                                 Wt := 3;
-
-                              --  Otherwise loop to adjust for upper/wide chars
-
-                              else
-                                 Wt := Nat (Name_Len);
-
-                                 for J in 1 .. Name_Len loop
-                                    if Name_Buffer (J) = 'U' then
-                                       Wt := Wt - 2;
-                                    elsif Name_Buffer (J) = 'W' then
-                                       Wt := Wt - 4;
-                                    end if;
-                                 end loop;
-                              end if;
-                           end if;
-
-                           W := Int'Max (W, Wt);
-                        end if;
-
-                        Next_Literal (L);
-                     end loop;
-                  end if;
-
-                  Fold_Uint (N, UI_From_Int (W), True);
-               end;
-            end if;
-         end if;
-      end Width;
-
       --  The following attributes can never be folded, and furthermore we
       --  should not even have entered the case statement for any of these.
       --  Note that in some cases, the values have already been folded as
       --  a result of the processing in Analyze_Attribute.
 
-      when Attribute_Abort_Signal             |
-           Attribute_Access                   |
+      when Attribute_Access                   |
            Attribute_Address                  |
            Attribute_Address_Size             |
-           Attribute_Asm_Input                |
-           Attribute_Asm_Output               |
            Attribute_Base                     |
-           Attribute_Bit_Order                |
            Attribute_Bit_Position             |
-           Attribute_Callable                 |
-           Attribute_Caller                   |
            Attribute_Class                    |
-           Attribute_Code_Address             |
-           Attribute_Count                    |
-           Attribute_Default_Bit_Order        |
-           Attribute_Elaborated               |
-           Attribute_Elab_Body                |
-           Attribute_Elab_Spec                |
-           Attribute_External_Tag             |
            Attribute_First_Bit                |
-           Attribute_Input                    |
            Attribute_Last_Bit                 |
-           Attribute_Maximum_Alignment        |
-           Attribute_Output                   |
-           Attribute_Partition_ID             |
            Attribute_Pool_Address             |
            Attribute_Position                 |
-           Attribute_Read                     |
            Attribute_Storage_Pool             |
            Attribute_Storage_Size             |
            Attribute_Storage_Unit             |
@@ -5490,7 +4091,6 @@ null;         end if;
            Attribute_Target_Name              |
            Attribute_Terminated               |
            Attribute_To_Address               |
-           Attribute_UET_Address              |
            Attribute_Unchecked_Access         |
            Attribute_Universal_Literal_String |
            Attribute_Unrestricted_Access      |
@@ -5498,8 +4098,7 @@ null;         end if;
            Attribute_Value                    |
            Attribute_Wchar_T_Size             |
            Attribute_Wide_Value               |
-           Attribute_Word_Size                |
-           Attribute_Write                    =>
+           Attribute_Word_Size                =>
 
          raise Program_Error;
 
@@ -5626,7 +4225,7 @@ null;         end if;
                         --  the node.
 
                         Set_Is_Overloaded (P, False);
-                        Generate_Reference (Entity (P), P);
+--                        Generate_Reference (Entity (P), P);
                         exit;
                      end if;
 
@@ -5757,7 +4356,7 @@ null;         end if;
                end if;
 
                Resolve (Prefix (P));
-               Generate_Reference (Entity (Selector_Name (P)), P);
+--               Generate_Reference (Entity (Selector_Name (P)), P);
 
             elsif Is_Overloaded (P) then
 
@@ -5908,10 +4507,6 @@ null;         end if;
                        ("?non-local pointer cannot point to local object", P);
                      Error_Msg_N
                        ("?Program_Error will be raised at run time", P);
-                     Rewrite (N,
-                       Make_Raise_Program_Error (Loc,
-                         Reason => PE_Accessibility_Check_Failed));
-                     Set_Etype (N, Typ);
                      return;
 
                   else
@@ -5935,22 +4530,22 @@ null;         end if;
 
             --  Check for incorrect atomic/volatile reference (RM C.6(12))
 
-            if Attr_Id /= Attribute_Unrestricted_Access then
-               if Is_Atomic_Object (P)
-                 and then not Is_Atomic (Designated_Type (Typ))
-               then
-                  Error_Msg_N
-                    ("access to atomic object cannot yield access-to-" &
-                     "non-atomic type", P);
-
-               elsif Is_Volatile_Object (P)
-                 and then not Is_Volatile (Designated_Type (Typ))
-               then
-                  Error_Msg_N
-                    ("access to volatile object cannot yield access-to-" &
-                     "non-volatile type", P);
-               end if;
-            end if;
+--              if Attr_Id /= Attribute_Unrestricted_Access then
+--                 if Is_Atomic_Object (P)
+--                   and then not Is_Atomic (Designated_Type (Typ))
+--                 then
+--                    Error_Msg_N
+--                      ("access to atomic object cannot yield access-to-" &
+--                       "non-atomic type", P);
+--  
+--                 elsif Is_Volatile_Object (P)
+--                   and then not Is_Volatile (Designated_Type (Typ))
+--                 then
+--                    Error_Msg_N
+--                      ("access to volatile object cannot yield access-to-" &
+--                       "non-volatile type", P);
+--                 end if;
+--              end if;
 
          -------------
          -- Address --
@@ -5959,7 +4554,7 @@ null;         end if;
          --  Deal with resolving the type for Address attribute, overloading
          --  is not permitted here, since there is no context to resolve it.
 
-         when Attribute_Address | Attribute_Code_Address =>
+         when Attribute_Address =>
 
             --  To be safe, assume that if the address of a variable is taken,
             --  it may be modified via this address, so note modification.
@@ -5999,83 +4594,11 @@ null;         end if;
                  New_Occurrence_Of (Alias (Entity (P)), Sloc (P)));
             end if;
 
-         ---------------
-         -- AST_Entry --
-         ---------------
-
-         --  Prefix of the AST_Entry attribute is an entry name which must
-         --  not be resolved, since this is definitely not an entry call.
-
-         when Attribute_AST_Entry =>
-            null;
-
-         ------------------
-         -- Body_Version --
-         ------------------
-
-         --  Prefix of Body_Version attribute can be a subprogram name which
-         --  must not be resolved, since this is not a call.
-
-         when Attribute_Body_Version =>
-            null;
-
-         ------------
-         -- Caller --
-         ------------
-
-         --  Prefix of Caller attribute is an entry name which must not
-         --  be resolved, since this is definitely not an entry call.
-
-         when Attribute_Caller =>
-            null;
-
          ------------------
          -- Code_Address --
          ------------------
 
          --  Shares processing with Address attribute
-
-         -----------
-         -- Count --
-         -----------
-
-         --  If the prefix of the Count attribute is an entry name it must not
-         --  be resolved, since this is definitely not an entry call. However,
-         --  if it is an element of an entry family, the index itself may
-         --  have to be resolved because it can be a general expression.
-
-         when Attribute_Count => null;
-
-         ----------------
-         -- Elaborated --
-         ----------------
-
-         --  Prefix of the Elaborated attribute is a subprogram name which
-         --  must not be resolved, since this is definitely not a call. Note
-         --  that it is a library unit, so it cannot be overloaded here.
-
-         when Attribute_Elaborated =>
-            null;
-
-         --------------------
-         -- Mechanism_Code --
-         --------------------
-
-         --  Prefix of the Mechanism_Code attribute is a function name
-         --  which must not be resolved. Should we check for overloaded ???
-
-         when Attribute_Mechanism_Code =>
-            null;
-
-         ------------------
-         -- Partition_ID --
-         ------------------
-
-         --  Most processing is done in sem_dist, after determining the
-         --  context type. Node is rewritten as a conversion to a runtime call.
-
-         when Attribute_Partition_ID => null;
-            return;
 
          when Attribute_Pool_Address =>
             Resolve (P);
@@ -6152,16 +4675,6 @@ null;         end if;
                return;
             end Range_Attribute;
 
-         -----------------
-         -- UET_Address --
-         -----------------
-
-         --  Prefix must not be resolved in this case, since it is not a
-         --  real entity reference. No action of any kind is require!
-
-         when Attribute_UET_Address =>
-            return;
-
          ----------------------
          -- Unchecked_Access --
          ----------------------
@@ -6201,16 +4714,6 @@ null;         end if;
 --              end if;
 
             return;
-
-         -------------
-         -- Version --
-         -------------
-
-         --  Prefix of Version attribute can be a subprogram name which
-         --  must not be resolved, since this is not a call.
-
-         when Attribute_Version =>
-            null;
 
          ----------------------
          -- Other Attributes --

@@ -284,63 +284,6 @@ package body Tbuild is
       return Make_Integer_Literal (Loc, UI_From_Int (Intval));
    end Make_Integer_Literal;
 
-   ---------------------------------
-   -- Make_Raise_Constraint_Error --
-   ---------------------------------
-
-   function Make_Raise_Constraint_Error
-     (Sloc      : Source_Ptr;
-      Condition : Node_Id := Empty;
-      Reason    : RT_Exception_Code)
-      return      Node_Id
-   is
-   begin
-      pragma Assert (Reason in RT_CE_Exceptions);
-      return
-        Make_Raise_Constraint_Error (Sloc,
-          Condition => Condition,
-          Reason =>
-            UI_From_Int (RT_Exception_Code'Pos (Reason)));
-   end Make_Raise_Constraint_Error;
-
-   ------------------------------
-   -- Make_Raise_Program_Error --
-   ------------------------------
-
-   function Make_Raise_Program_Error
-     (Sloc      : Source_Ptr;
-      Condition : Node_Id := Empty;
-      Reason    : RT_Exception_Code)
-      return      Node_Id
-   is
-   begin
-      pragma Assert (Reason in RT_PE_Exceptions);
-      return
-        Make_Raise_Program_Error (Sloc,
-          Condition => Condition,
-          Reason =>
-            UI_From_Int (RT_Exception_Code'Pos (Reason)));
-   end Make_Raise_Program_Error;
-
-   ------------------------------
-   -- Make_Raise_Storage_Error --
-   ------------------------------
-
-   function Make_Raise_Storage_Error
-     (Sloc      : Source_Ptr;
-      Condition : Node_Id := Empty;
-      Reason    : RT_Exception_Code)
-      return      Node_Id
-   is
-   begin
-      pragma Assert (Reason in RT_SE_Exceptions);
-      return
-        Make_Raise_Storage_Error (Sloc,
-          Condition => Condition,
-          Reason =>
-            UI_From_Int (RT_Exception_Code'Pos (Reason)));
-   end Make_Raise_Storage_Error;
-
    ---------------------------
    -- Make_Unsuppress_Block --
    ---------------------------
@@ -379,16 +322,8 @@ package body Tbuild is
    --------------------------
 
    function New_Constraint_Error (Loc : Source_Ptr) return Node_Id is
-      Ident_Node : Node_Id;
-      Raise_Node : Node_Id;
-
    begin
-      Ident_Node := New_Node (N_Identifier, Loc);
-      Set_Chars (Ident_Node, Chars (Standard_Entity (S_Constraint_Error)));
-      Set_Entity (Ident_Node, Standard_Entity (S_Constraint_Error));
-      Raise_Node := New_Node (N_Raise_Statement, Loc);
-      Set_Name (Raise_Node, Ident_Node);
-      return Raise_Node;
+      return Empty;
    end New_Constraint_Error;
 
    -----------------------

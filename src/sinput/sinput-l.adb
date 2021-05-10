@@ -30,8 +30,8 @@ with Namet;    use Namet;
 with Opt;
 with Osint;    use Osint;
 with Output;   use Output;
-with Prep;     use Prep;
-with Prepcomp; use Prepcomp;
+--with Prep;     use Prep;
+--with Prepcomp; use Prepcomp;
 with Scans;    use Scans;
 with Scn;      use Scn;
 with Sinfo;    use Sinfo;
@@ -301,10 +301,10 @@ package body Sinput.L is
       --  source will be the last created, and we will be able to replace it
       --  and modify Hi without stepping on another buffer.
 
-      if T = Osint.Source then
-         Prepare_To_Preprocess
-           (Source => N, Preprocessing_Needed => Preprocessing_Needed);
-      end if;
+--        if T = Osint.Source then
+--           Prepare_To_Preprocess
+--             (Source => N, Preprocessing_Needed => Preprocessing_Needed);
+--        end if;
 
       Source_File.Increment_Last;
       X := Source_File.Last;
@@ -429,129 +429,129 @@ package body Sinput.L is
 
          --  Preprocess the source if it needs to be preprocessed
 
-         if Preprocessing_Needed then
-            if Opt.List_Preprocessing_Symbols then
-               Get_Name_String (N);
-
-               declare
-                  Foreword : String (1 .. Foreword_Start'Length +
-                                          Name_Len + Foreword_End'Length);
-
-               begin
-                  Foreword (1 .. Foreword_Start'Length) := Foreword_Start;
-                  Foreword (Foreword_Start'Length + 1 ..
-                              Foreword_Start'Length + Name_Len) :=
-                    Name_Buffer (1 .. Name_Len);
-                  Foreword (Foreword'Last - Foreword_End'Length + 1 ..
-                              Foreword'Last) := Foreword_End;
-                  Prep.List_Symbols (Foreword);
-               end;
-            end if;
-
-            declare
-               T : constant Nat := Total_Errors_Detected;
-               --  Used to check if there were errors during preprocessing
-
-            begin
-               --  If this is the first time we preprocess a source, allocate
-               --  the preprocessing buffer.
-
-               if Prep_Buffer = null then
-                  Prep_Buffer :=
-                    new Text_Buffer (1 .. Initial_Size_Of_Prep_Buffer);
-               end if;
-
-               --  Make sure the preprocessing buffer is empty
-
-               Prep_Buffer_Last := 0;
-
-               --  Initialize the preprocessor
-
-               Prep.Initialize
-                 (Error_Msg         => Errout.Error_Msg'Access,
-                  Scan              => Scn.Scanner.Scan'Access,
-                  Set_Ignore_Errors => Errout.Set_Ignore_Errors'Access,
-                  Put_Char          => Put_Char_In_Prep_Buffer'Access,
-                  New_EOL           => New_EOL_In_Prep_Buffer'Access);
-
-               --  Initialize the scanner and set its behavior for
-               --  preprocessing, then preprocess.
-
-               Scn.Scanner.Initialize_Scanner (No_Unit, X);
-
-               Scn.Scanner.Set_Special_Character ('#');
-               Scn.Scanner.Set_Special_Character ('$');
-               Scn.Scanner.Set_End_Of_Line_As_Token (True);
-
-               Preprocess;
-
-               --  Reset the scanner to its standard behavior
-
-               Scn.Scanner.Reset_Special_Characters;
-               Scn.Scanner.Set_End_Of_Line_As_Token (False);
-
-               --  If there were errors during preprocessing, record an
-               --  error at the start of the file, and do not change the
-               --  source buffer.
-
-               if T /= Total_Errors_Detected then
-                  Errout.Error_Msg
-                    ("file could not be successfully preprocessed", Lo);
-                  return No_Source_File;
-
-               else
-                  --  Set the new value of Hi
-
-                  Hi := Lo + Source_Ptr (Prep_Buffer_Last);
-
-                  --  Create the new source buffer
-
-                  declare
-                     subtype Actual_Source_Buffer is Source_Buffer (Lo .. Hi);
-                     --  Physical buffer allocated
-
-                     type Actual_Source_Ptr is access Actual_Source_Buffer;
-                     --  This is the pointer type for the physical buffer
-                     --  allocated.
-
-                     Actual_Ptr : constant Actual_Source_Ptr :=
-                                    new Actual_Source_Buffer;
-                     --  And this is the actual physical buffer
-
-                  begin
-                     Actual_Ptr (Lo .. Hi - 1) :=
-                       Prep_Buffer (1 .. Prep_Buffer_Last);
-                     Actual_Ptr (Hi) := EOF;
-
-                     --  Now we need to work out the proper virtual origin
-                     --  pointer to return. This is exactly
-                     --  Actual_Ptr (0)'Address, but we have to be careful to
-                     --  suppress checks to compute this address.
-
-                     declare
-                        pragma Suppress (All_Checks);
-
-                        function To_Source_Buffer_Ptr is new
-                          Unchecked_Conversion (Address, Source_Buffer_Ptr);
-
-                     begin
-                        Src := To_Source_Buffer_Ptr (Actual_Ptr (0)'Address);
-
-                        --  Record in the table the new source buffer and the
-                        --  new value of Hi.
-
-                        Source_File.Table (X).Source_Text := Src;
-                        Source_File.Table (X).Source_Last := Hi;
-
-                        --  Reset Last_Line to 1, because the lines do not
-                        --  have neccessarily the same starts and lengths.
-
-                        Source_File.Table (X).Last_Source_Line := 1;
-                     end;
-                  end;
-               end if;
-            end;
-         end if;
+--           if Preprocessing_Needed then
+--              if Opt.List_Preprocessing_Symbols then
+--                 Get_Name_String (N);
+--
+--                 declare
+--                    Foreword : String (1 .. Foreword_Start'Length +
+--                                            Name_Len + Foreword_End'Length);
+--
+--                 begin
+--                    Foreword (1 .. Foreword_Start'Length) := Foreword_Start;
+--                    Foreword (Foreword_Start'Length + 1 ..
+--                                Foreword_Start'Length + Name_Len) :=
+--                      Name_Buffer (1 .. Name_Len);
+--                    Foreword (Foreword'Last - Foreword_End'Length + 1 ..
+--                                Foreword'Last) := Foreword_End;
+--                    Prep.List_Symbols (Foreword);
+--                 end;
+--              end if;
+--
+--              declare
+--                 T : constant Nat := Total_Errors_Detected;
+--                 --  Used to check if there were errors during preprocessing
+--
+--              begin
+--                 --  If this is the first time we preprocess a source, allocate
+--                 --  the preprocessing buffer.
+--
+--                 if Prep_Buffer = null then
+--                    Prep_Buffer :=
+--                      new Text_Buffer (1 .. Initial_Size_Of_Prep_Buffer);
+--                 end if;
+--
+--                 --  Make sure the preprocessing buffer is empty
+--
+--                 Prep_Buffer_Last := 0;
+--
+--                 --  Initialize the preprocessor
+--
+--                 Prep.Initialize
+--                   (Error_Msg         => Errout.Error_Msg'Access,
+--                    Scan              => Scn.Scanner.Scan'Access,
+--                    Set_Ignore_Errors => Errout.Set_Ignore_Errors'Access,
+--                    Put_Char          => Put_Char_In_Prep_Buffer'Access,
+--                    New_EOL           => New_EOL_In_Prep_Buffer'Access);
+--
+--                 --  Initialize the scanner and set its behavior for
+--                 --  preprocessing, then preprocess.
+--
+--                 Scn.Scanner.Initialize_Scanner (No_Unit, X);
+--
+--                 Scn.Scanner.Set_Special_Character ('#');
+--                 Scn.Scanner.Set_Special_Character ('$');
+--                 Scn.Scanner.Set_End_Of_Line_As_Token (True);
+--
+--                 Preprocess;
+--
+--                 --  Reset the scanner to its standard behavior
+--
+--                 Scn.Scanner.Reset_Special_Characters;
+--                 Scn.Scanner.Set_End_Of_Line_As_Token (False);
+--
+--                 --  If there were errors during preprocessing, record an
+--                 --  error at the start of the file, and do not change the
+--                 --  source buffer.
+--
+--                 if T /= Total_Errors_Detected then
+--                    Errout.Error_Msg
+--                      ("file could not be successfully preprocessed", Lo);
+--                    return No_Source_File;
+--
+--                 else
+--                    --  Set the new value of Hi
+--
+--                    Hi := Lo + Source_Ptr (Prep_Buffer_Last);
+--
+--                    --  Create the new source buffer
+--
+--                    declare
+--                       subtype Actual_Source_Buffer is Source_Buffer (Lo .. Hi);
+--                       --  Physical buffer allocated
+--
+--                       type Actual_Source_Ptr is access Actual_Source_Buffer;
+--                       --  This is the pointer type for the physical buffer
+--                       --  allocated.
+--
+--                       Actual_Ptr : constant Actual_Source_Ptr :=
+--                                      new Actual_Source_Buffer;
+--                       --  And this is the actual physical buffer
+--
+--                    begin
+--                       Actual_Ptr (Lo .. Hi - 1) :=
+--                         Prep_Buffer (1 .. Prep_Buffer_Last);
+--                       Actual_Ptr (Hi) := EOF;
+--
+--                       --  Now we need to work out the proper virtual origin
+--                       --  pointer to return. This is exactly
+--                       --  Actual_Ptr (0)'Address, but we have to be careful to
+--                       --  suppress checks to compute this address.
+--
+--                       declare
+--                          pragma Suppress (All_Checks);
+--
+--                          function To_Source_Buffer_Ptr is new
+--                            Unchecked_Conversion (Address, Source_Buffer_Ptr);
+--
+--                       begin
+--                          Src := To_Source_Buffer_Ptr (Actual_Ptr (0)'Address);
+--
+--                          --  Record in the table the new source buffer and the
+--                          --  new value of Hi.
+--
+--                          Source_File.Table (X).Source_Text := Src;
+--                          Source_File.Table (X).Source_Last := Hi;
+--
+--                          --  Reset Last_Line to 1, because the lines do not
+--                          --  have neccessarily the same starts and lengths.
+--
+--                          Source_File.Table (X).Last_Source_Line := 1;
+--                       end;
+--                    end;
+--                 end if;
+--              end;
+--           end if;
 
          Set_Source_File_Index_Table (X);
          return X;

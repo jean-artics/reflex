@@ -136,33 +136,6 @@ package Tbuild is
    pragma Inline (Make_Integer_Literal);
    --  A convenient form of Make_Integer_Literal taking Int instead of Uint
 
-   function Make_Raise_Constraint_Error
-     (Sloc      : Source_Ptr;
-      Condition : Node_Id := Empty;
-      Reason    : RT_Exception_Code)
-      return      Node_Id;
-   pragma Inline (Make_Raise_Constraint_Error);
-   --  A convenient form of Make_Raise_Constraint_Error where the Reason
-   --  is given simply as an enumeration value, rather than a Uint code.
-
-   function Make_Raise_Program_Error
-     (Sloc      : Source_Ptr;
-      Condition : Node_Id := Empty;
-      Reason    : RT_Exception_Code)
-      return      Node_Id;
-   pragma Inline (Make_Raise_Program_Error);
-   --  A convenient form of Make_Raise_Program_Error where the Reason
-   --  is given simply as an enumeration value, rather than a Uint code.
-
-   function Make_Raise_Storage_Error
-     (Sloc      : Source_Ptr;
-      Condition : Node_Id := Empty;
-      Reason    : RT_Exception_Code)
-      return      Node_Id;
-   pragma Inline (Make_Raise_Storage_Error);
-   --  A convenient form of Make_Raise_Storage_Error where the Reason
-   --  is given simply as an enumeration value, rather than a Uint code.
-
    function Make_Unsuppress_Block
      (Loc   : Source_Ptr;
       Check : Name_Id;

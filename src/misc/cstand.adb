@@ -270,28 +270,6 @@ package body CStand is
       R_Node     : Node_Id;
       B_Node     : Node_Id;
 
-      procedure Build_Exception (S : Standard_Entity_Type);
-      --  Procedure to declare given entity as an exception
-
-      ---------------------
-      -- Build_Exception --
-      ---------------------
-
-      procedure Build_Exception (S : Standard_Entity_Type) is
-      begin
-         Set_Ekind          (Standard_Entity (S), E_Exception);
-         Set_Etype          (Standard_Entity (S), Standard_Exception_Type);
-         Set_Exception_Code (Standard_Entity (S), Uint_0);
-         Set_Is_Public      (Standard_Entity (S), True);
-
-         Decl :=
-           Make_Exception_Declaration (Stloc,
-             Defining_Identifier => Standard_Entity (S));
-         Append (Decl, Decl_S);
-      end Build_Exception;
-
-   --  Start of processing for Create_Standard
-
    begin
       --  Initialize scanner for internal scans of literals
 
@@ -1071,11 +1049,11 @@ package body CStand is
          Set_Is_Static_Expression (Type_High_Bound (Standard_Duration));
          Set_Is_Static_Expression (Type_Low_Bound  (Standard_Duration));
 
-         Set_Corresponding_Integer_Value
-           (Type_High_Bound (Standard_Duration), Dhi);
-
-         Set_Corresponding_Integer_Value
-           (Type_Low_Bound  (Standard_Duration), Dlo);
+--           Set_Corresponding_Integer_Value
+--             (Type_High_Bound (Standard_Duration), Dhi);
+--
+--           Set_Corresponding_Integer_Value
+--             (Type_Low_Bound  (Standard_Duration), Dlo);
 
          Set_Size_Known_At_Compile_Time (Standard_Duration);
       end Build_Duration;
@@ -1145,27 +1123,8 @@ package body CStand is
 
       Layout_Type (Standard_Exception_Type);
 
-      --  Create declarations of standard exceptions
-
-      Build_Exception (S_Constraint_Error);
-      Build_Exception (S_Program_Error);
-      Build_Exception (S_Storage_Error);
-      Build_Exception (S_Tasking_Error);
-
       --  Numeric_Error is a normal exception in Ada 83, but in Ada 95
       --  it is a renaming of Constraint_Error
-
-      Decl := New_Node (N_Exception_Renaming_Declaration, Stloc);
-      E_Id := Standard_Entity (S_Numeric_Error);
-
-      Set_Ekind          (E_Id, E_Exception);
-      Set_Exception_Code (E_Id, Uint_0);
-      Set_Etype          (E_Id, Standard_Exception_Type);
-      Set_Is_Public      (E_Id);
-      Set_Renamed_Entity (E_Id, Standard_Entity (S_Constraint_Error));
-
-      Set_Defining_Identifier (Decl, E_Id);
-      Append (Decl, Decl_S);
 
       Ident_Node := New_Node (N_Identifier, Stloc);
       Set_Chars  (Ident_Node, Chars (Standard_Entity (S_Constraint_Error)));

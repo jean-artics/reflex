@@ -29,10 +29,10 @@ with Debug;    use Debug;
 with Lib;      use Lib;
 with Osint;    use Osint;
 with Opt;      use Opt;
-with Prepcomp; use Prepcomp;
+--with Prepcomp; use Prepcomp;
 with Types;    use Types;
 with Validsw;  use Validsw;
-with Stylesw;  use Stylesw;
+--with Stylesw;  use Stylesw;
 with Output; use Output;
 
 with System.WCh_Con; use System.WCh_Con;
@@ -406,7 +406,7 @@ package body Switch.C is
                         raise Bad_Switch;
                      end if;
 
-                     Add_Symbol_Definition (Switch_Chars (Ptr .. Max));
+                     --Add_Symbol_Definition (Switch_Chars (Ptr .. Max));
 
                      --  Store the switch
 
@@ -534,8 +534,6 @@ package body Switch.C is
                Warn_On_Redundant_Constructs := True;
                Warn_On_Unchecked_Conversion := True;
                Warn_On_Unrecognized_Pragma  := True;
-
-               Set_Default_Style_Check_Options;
 
             --  Processing for G switch
 
@@ -992,53 +990,8 @@ package body Switch.C is
 
             --  Processing for y switch
 
-            when 'y' =>
-               Ptr := Ptr + 1;
-
-               if Ptr > Max then
-                  Set_Default_Style_Check_Options;
-
-               else
-                  Store_Switch := False;
-                  Storing (First_Stored) := 'y';
-
-                  declare
-                     OK  : Boolean;
-                     Last_Stored : Integer;
-
-                  begin
-                     Set_Style_Check_Options
-                       (Switch_Chars (Ptr .. Max), OK, Ptr);
-
-                     if not OK then
-                        raise Bad_Switch;
-                     end if;
-
-                     Ptr := First_Char + 1;
-
-                     while Ptr <= Max loop
-                        Last_Stored := First_Stored + 1;
-                        Storing (Last_Stored) := Switch_Chars (Ptr);
-
-                        if Switch_Chars (Ptr) = 'M' then
-                           loop
-                              Ptr := Ptr + 1;
-                              exit when Ptr > Max
-                                or else Switch_Chars (Ptr) not in '0' .. '9';
-                              Last_Stored := Last_Stored + 1;
-                              Storing (Last_Stored) := Switch_Chars (Ptr);
-                           end loop;
-
-                        else
-                           Ptr := Ptr + 1;
-                        end if;
-
-                        Store_Compilation_Switch
-                          (Storing (Storing'First .. Last_Stored));
-                     end loop;
-                  end;
-               end if;
-
+               when 'y' => null;
+                  
             --  Processing for z switch
 
             when 'z' =>

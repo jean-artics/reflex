@@ -150,19 +150,6 @@ package body Util is
       end if;
    end Check_95_Keyword;
 
-   ----------------------
-   -- Check_Bad_Layout --
-   ----------------------
-
-   procedure Check_Bad_Layout is
-   begin
-      if Style.RM_Column_Check and then Token_Is_At_Start_Of_Line
-        and then Start_Column <= Scope.Table (Scope.Last).Ecol
-      then
-         Error_Msg_BC ("(style) incorrect layout");
-      end if;
-   end Check_Bad_Layout;
-
    --------------------------
    -- Check_Misspelling_Of --
    --------------------------

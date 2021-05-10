@@ -30,11 +30,9 @@ with Exp_Util; use Exp_Util;
 with Fname;    use Fname;
 with Fname.UF; use Fname.UF;
 with Freeze;   use Freeze;
-with Impunit;  use Impunit;
 with Inline;   use Inline;
 with Lib;      use Lib;
 with Lib.Load; use Lib.Load;
-with Lib.Xref; use Lib.Xref;
 with Namet;    use Namet;
 with Nlists;   use Nlists;
 with Nmake;    use Nmake;
@@ -45,7 +43,6 @@ with Sem;      use Sem;
 with Sem_Ch6;  use Sem_Ch6;
 with Sem_Ch7;  use Sem_Ch7;
 with Sem_Ch8;  use Sem_Ch8;
--- with Sem_Dist; use Sem_Dist;
 with Sem_Prag; use Sem_Prag;
 with Sem_Util; use Sem_Util;
 with Sem_Warn; use Sem_Warn;
@@ -54,8 +51,6 @@ with Sinfo;    use Sinfo;
 with Sinfo.CN; use Sinfo.CN;
 with Sinput;   use Sinput;
 with Snames;   use Snames;
-with Style;    use Style;
-with Stylesw;  use Stylesw;
 with Tbuild;   use Tbuild;
 with Ttypes;   use Ttypes;
 with Uname;    use Uname;
@@ -69,10 +64,6 @@ package body Sem_Ch10 is
 
    procedure Analyze_Context (N : Node_Id);
    --  Analyzes items in the context clause of compilation unit
-
-   procedure Check_Body_Needed_For_SAL (Unit_Name : Entity_Id);
-   --  Check whether the source for the body of a compilation unit must
-   --  be included in a standalone library.
 
    procedure Expand_With_Clause (Nam : Node_Id; N : Node_Id);
    --  When a child unit appears in a context clause, the implicit withs on
@@ -212,7 +203,6 @@ package body Sem_Ch10 is
             Change_Selected_Component_To_Expanded_Name (Pref);
             Set_Entity (Pref, P_Name);
             Set_Etype (Pref, Etype (P_Name));
-            Generate_Reference (P_Name, Pref, 'r');
             Pref   := Prefix (Pref);
             P_Name := Scope (P_Name);
          end loop;
@@ -223,8 +213,6 @@ package body Sem_Ch10 is
          if Present (P_Name) then
             Set_Entity (Pref, P_Name);
             Set_Etype (Pref, Etype (P_Name));
-            Generate_Reference (P_Name, Pref, 'r');
-            Style.Check_Identifier (Pref, P_Name);
          end if;
       end Generate_Parent_References;
 
@@ -406,18 +394,12 @@ package body Sem_Ch10 is
          --  The analysis of the parent is done with style checks off
 
          declare
-            Save_Style_Check : constant Boolean := Style_Check;
             Save_C_Restrict  : constant Save_Compilation_Unit_Restrictions :=
                                  Compilation_Unit_Restrictions_Save;
 
          begin
-            if not GNAT_Mode then
-               Style_Check := False;
-            end if;
-
             Semantics (Parent_Spec (Unit_Node));
             Version_Update (N, Parent_Spec (Unit_Node));
-            Style_Check := Save_Style_Check;
             Compilation_Unit_Restrictions_Restore (Save_C_Restrict);
          end;
       end if;
@@ -512,11 +494,6 @@ package body Sem_Ch10 is
         and then Operating_Mode = Generate_Code
         and then Expander_Active
       then
-         --  Check whether the source for the body of the unit must be
-         --  included in a standalone library.
-
-         Check_Body_Needed_For_SAL (Cunit_Entity (Main_Unit));
-
          --  Indicate that the main unit is now analyzed, to catch possible
          --  circularities between it and generic bodies. Remove main unit
          --  from visibility. This might seem superfluous, but the main unit
@@ -611,7 +588,6 @@ package body Sem_Ch10 is
             Unum : constant Unit_Number_Type := Get_Source_Unit (Loc);
          begin
             Spec_Id := Defining_Entity (Unit (N));
-            Generate_Definition (Spec_Id);
 
             --  See if an elaboration entity is required for possible
             --  access before elaboration checking. Note that we must
@@ -665,18 +641,7 @@ package body Sem_Ch10 is
       --  because of some warnings that can be output (see Freeze_Subprogram),
       --  but may in general be required. If freezing actions result, place
       --  them in the compilation unit actions list, and analyze them.
-
---        declare
---           Loc : constant Source_Ptr := Sloc (N);
---           L   : constant List_Id :=
---                   Freeze_Entity (Cunit_Entity (Current_Sem_Unit), Loc);
---  
---        begin
---           while Is_Non_Empty_List (L) loop
---              Insert_Library_Level_Action (Remove_Head (L));
---           end loop;
---        end;
-
+      
       Set_Analyzed (N);
 
       if Nkind (Unit_Node) = N_Package_Declaration
@@ -684,13 +649,9 @@ package body Sem_Ch10 is
         and then (Expander_Active or else Generate_Plc_Code)
       then
          declare
-            Save_Style_Check : constant Boolean := Style_Check;
             Save_Warning     : constant Warning_Mode_Type := Warning_Mode;
-            Options : Style_Check_Options;
 
          begin
-            Save_Style_Check_Options (Options);
-            Reset_Style_Check_Options;
             Opt.Warning_Mode := Suppress;
 	    
             
@@ -710,9 +671,6 @@ package body Sem_Ch10 is
 	       end;
 	    end if;
 
-            Reset_Style_Check_Options;
-            Set_Style_Check_Options (Options);
-            Style_Check := Save_Style_Check;
             Warning_Mode := Save_Warning;
          end;
       end if;
@@ -817,22 +775,6 @@ package body Sem_Ch10 is
             Check_Restricted_Unit (Unit_Name (Get_Source_Unit (U)), N);
          end if;
 
-         --  Check for inappropriate with of internal implementation unit
-         --  if we are currently compiling the main unit and the main unit
-         --  is itself not an internal unit. We do not issue this message
-         --  for implicit with's generated by the compiler itself.
-
-         if Implementation_Unit_Warnings
-           and then Current_Sem_Unit = Main_Unit
-           and then Implementation_Unit (Get_Source_Unit (U))
-           and then not Intunit
-           and then not Implicit_With (N)
-         then
-            Error_Msg_N ("& is an internal 'G'N'A'T unit?", Name (N));
-            Error_Msg_N
-              ("\use of this unit is non-portable and version-dependent?",
-               Name (N));
-         end if;
       end if;
 
       --  Semantic analysis of a generic unit is performed on a copy of
@@ -913,8 +855,7 @@ package body Sem_Ch10 is
       --  want to consider the unit as unreferenced if this is the only
       --  reference that occurs.
 
-      Set_Entity_With_Style_Check (Name (N), E_Name);
-      Generate_Reference (E_Name, Name (N), 'w', Set_Ref => False);
+      Set_Entity (Name (N), E_Name);
 
       if Is_Child_Unit (E_Name) then
          Pref     := Prefix (Name (N));
@@ -922,9 +863,8 @@ package body Sem_Ch10 is
 
          while Nkind (Pref) = N_Selected_Component loop
             Change_Selected_Component_To_Expanded_Name (Pref);
-            Set_Entity_With_Style_Check (Pref, Par_Name);
+            Set_Entity (Pref, Par_Name);
 
-            Generate_Reference (Par_Name, Pref);
             Pref := Prefix (Pref);
 
             --  If E_Name is the dummy entity for a nonexistent unit,
@@ -951,8 +891,7 @@ package body Sem_Ch10 is
             Par_Name := Entity (Pref);
          end if;
 
-         Set_Entity_With_Style_Check (Pref, Par_Name);
-         Generate_Reference (Par_Name, Pref);
+         Set_Entity (Pref, Par_Name);
       end if;
 
       --  If the withed unit is System, and a system extension pragma is
@@ -1647,105 +1586,6 @@ package body Sem_Ch10 is
       end if;
       
    end Load_Needed_Body;
-
-   -------------------------------
-   -- Check_Body_Needed_For_SAL --
-   -------------------------------
-
-   procedure Check_Body_Needed_For_SAL (Unit_Name : Entity_Id) is
-
-      function Entity_Needs_Body (E : Entity_Id) return Boolean;
-      --  Determine whether use of entity E might require the presence
-      --  of its body. For a package this requires a recursive traversal
-      --  of all nested declarations.
-
-      ---------------------------
-      -- Entity_Needed_For_SAL --
-      ---------------------------
-
-      function Entity_Needs_Body (E : Entity_Id) return Boolean is
-         Ent : Entity_Id;
-
-      begin
-         if Is_Subprogram (E)
-           and then Has_Pragma_Inline (E)
-         then
-            return True;
-
-         elsif Ekind (E) = E_Generic_Function
-           or else Ekind (E) = E_Generic_Procedure
-         then
-            return True;
-
-         elsif Ekind (E) = E_Generic_Package
-           and then
-             Nkind (Unit_Declaration_Node (E)) = N_Generic_Package_Declaration
-           and then Present (Corresponding_Body (Unit_Declaration_Node (E)))
-         then
-            return True;
-
-         elsif Ekind (E) = E_Package
-           and then
-             Nkind (Unit_Declaration_Node (E)) = N_Package_Declaration
-           and then Present (Corresponding_Body (Unit_Declaration_Node (E)))
-         then
-            Ent := First_Entity (E);
-
-            while Present (Ent) loop
-               if Entity_Needs_Body (Ent) then
-                  return True;
-               end if;
-
-               Next_Entity (Ent);
-            end loop;
-
-            return False;
-
-         else
-            return False;
-         end if;
-      end Entity_Needs_Body;
-
-   --  Start of processing for Check_Body_Needed_For_SAL
-
-   begin
-      if Ekind (Unit_Name) = E_Generic_Package
-        and then
-          Nkind (Unit_Declaration_Node (Unit_Name)) =
-                                            N_Generic_Package_Declaration
-        and then
-          Present (Corresponding_Body (Unit_Declaration_Node (Unit_Name)))
-      then
-         Set_Body_Needed_For_SAL (Unit_Name);
-
-      elsif Ekind (Unit_Name) = E_Generic_Procedure
-        or else Ekind (Unit_Name) = E_Generic_Function
-      then
-         Set_Body_Needed_For_SAL (Unit_Name);
-
-      elsif Is_Subprogram (Unit_Name)
-        and then Nkind (Unit_Declaration_Node (Unit_Name)) =
-                                            N_Subprogram_Declaration
-        and then Has_Pragma_Inline (Unit_Name)
-      then
-         Set_Body_Needed_For_SAL (Unit_Name);
-
-      elsif Ekind (Unit_Name) = E_Subprogram_Body then
-         Check_Body_Needed_For_SAL
-           (Corresponding_Spec (Unit_Declaration_Node (Unit_Name)));
-
-      elsif Ekind (Unit_Name) = E_Package
-        and then Entity_Needs_Body (Unit_Name)
-      then
-         Set_Body_Needed_For_SAL (Unit_Name);
-
-      elsif Ekind (Unit_Name) = E_Package_Body
-        and then Nkind (Unit_Declaration_Node (Unit_Name)) = N_Package_Body
-      then
-         Check_Body_Needed_For_SAL
-           (Corresponding_Spec (Unit_Declaration_Node (Unit_Name)));
-      end if;
-   end Check_Body_Needed_For_SAL;
 
    --------------------
    -- Remove_Context --

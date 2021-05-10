@@ -31,7 +31,6 @@ with Fname;    use Fname;
 with Freeze;   use Freeze;
 with Lib;      use Lib;
 with Lib.Load; use Lib.Load;
-with Lib.Xref; use Lib.Xref;
 with Namet;    use Namet;
 with Nlists;   use Nlists;
 with Nmake;    use Nmake;
@@ -52,7 +51,6 @@ with Stand;    use Stand;
 with Sinfo;    use Sinfo;
 with Sinfo.CN; use Sinfo.CN;
 with Snames;   use Snames;
-with Style;    use Style;
 with Table;
 with Tbuild;   use Tbuild;
 with Uintp;    use Uintp;
@@ -372,11 +370,6 @@ package body Sem_Ch8 is
    --  use clause must be processed. Pack_Name is an entity name that
    --  references the package in question.
 
-   procedure Attribute_Renaming (N : Node_Id);
-   --  Analyze renaming of attribute as function. The renaming declaration N
-   --  is rewritten as a function body that returns the attribute reference
-   --  applied to the formals of the function.
-
    procedure Check_Frozen_Renaming (N : Node_Id; Subp : Entity_Id);
    --  A renaming_as_body may occur after the entity of the original decla-
    --  ration has been frozen. In that case, the body of the new entity must
@@ -468,29 +461,8 @@ package body Sem_Ch8 is
    --  if there is more than one element in the list.
 
    procedure Analyze_Exception_Renaming (N : Node_Id) is
-      Id  : constant Node_Id := Defining_Identifier (N);
-      Nam : constant Node_Id := Name (N);
-
    begin
-      Enter_Name (Id);
-      Analyze (Nam);
-
-      Set_Ekind          (Id, E_Exception);
-      Set_Exception_Code (Id, Uint_0);
-      Set_Etype          (Id, Standard_Exception_Type);
-      Set_Is_Pure        (Id, Is_Pure (Current_Scope));
-
-      if not Is_Entity_Name (Nam) or else
-        Ekind (Entity (Nam)) /= E_Exception
-      then
-         Error_Msg_N ("invalid exception name in renaming", Nam);
-      else
-         if Present (Renamed_Object (Entity (Nam))) then
-            Set_Renamed_Object (Id, Renamed_Object (Entity (Nam)));
-         else
-            Set_Renamed_Object (Id, Entity (Nam));
-         end if;
-      end if;
+      null;
    end Analyze_Exception_Renaming;
 
    ---------------------------
@@ -566,8 +538,6 @@ package body Sem_Ch8 is
       if Name (N) = Error then
          return;
       end if;
-
-      Generate_Definition (New_P);
 
       if Current_Scope /= Standard_Standard then
          Set_Is_Pure (New_P, Is_Pure (Current_Scope));
@@ -805,7 +775,6 @@ package body Sem_Ch8 is
          Set_Last_Entity  (New_P,  Last_Entity  (Old_P));
          Set_First_Private_Entity (New_P, First_Private_Entity (Old_P));
          Check_Library_Unit_Renaming (N, Old_P);
-         Generate_Reference (Old_P, Name (N));
 
          --  If this is the renaming declaration of a package instantiation
          --  within itself, it is the declaration that ends the list of actuals
@@ -1008,14 +977,6 @@ package body Sem_Ch8 is
 
    begin
       --  We must test for the attribute renaming case before the Analyze
-      --  call because otherwise Sem_Attr will complain that the attribute
-      --  is missing an argument when it is analyzed.
-
-      if Nkind (Nam) = N_Attribute_Reference then
-         Attribute_Renaming (N);
-         return;
-      end if;
-
       --  Check whether this declaration corresponds to the instantiation
       --  of a formal subprogram. This is indicated by the presence of a
       --  Corresponding_Spec that is the instantiation declaration.
@@ -1098,7 +1059,6 @@ package body Sem_Ch8 is
          New_S := Rename_Spec;
 
       else
-         Generate_Definition (New_S);
          New_Overloaded_Entity (New_S);
          if Is_Entity_Name (Nam)
            and then Is_Intrinsic_Subprogram (Entity (Nam))
@@ -1132,8 +1092,8 @@ package body Sem_Ch8 is
          Analyze_Renamed_Character (N, New_S, Present (Rename_Spec));
          return;
 
-      elsif (not Is_Entity_Name (Nam)
-              and then Nkind (Nam) /= N_Operator_Symbol)
+      elsif not Is_Entity_Name (Nam)
+--                and then Nkind (Nam) /= N_Operator_Symbol)
         or else not Is_Overloadable (Entity (Nam))
       then
          Error_Msg_N ("expect valid subprogram name in renaming", N);
@@ -1162,16 +1122,6 @@ package body Sem_Ch8 is
 
       if Old_S /= Any_Id then
 
-         if Is_Actual
-           and then Box_Present (Inst_Node)
-         then
-            --  This is an implicit reference to the default actual
-
-            Generate_Reference (Old_S, Nam, Typ => 'i', Force => True);
-         else
-            Generate_Reference (Old_S, Nam);
-         end if;
-
          --  For a renaming-as-body, require subtype conformance,
          --  but if the declaration being completed has not been
          --  frozen, then inherit the convention of the renamed
@@ -1180,9 +1130,6 @@ package body Sem_Ch8 is
          --  rule stated in the RM doesn't seem to address this ???).
 
          if Present (Rename_Spec) then
-            Generate_Reference (Rename_Spec, Defining_Entity (Spec), 'b');
-            Style.Check_Identifier (Defining_Entity (Spec), Rename_Spec);
-
             if not Is_Frozen (Rename_Spec) then
                if not Has_Convention_Pragma (Rename_Spec) then
                   Set_Convention (New_S, Convention (Old_S));
@@ -1286,25 +1233,25 @@ package body Sem_Ch8 is
          --  it is worth mentioning that operators for the type are not
          --  declared in the scope given by the prefix.
 
-         if Nkind (Nam) = N_Expanded_Name
-           and then Nkind (Selector_Name (Nam)) = N_Operator_Symbol
-           and then Scope (Entity (Nam)) = Standard_Standard
-         then
-            declare
-               T : constant Entity_Id :=
-                     Base_Type (Etype (First_Formal (New_S)));
-
-            begin
-               Error_Msg_Node_2 := Prefix (Nam);
-               Error_Msg_NE
-                 ("operator for type& is not declared in&", Prefix (Nam), T);
-            end;
-
-         else
+--           if Nkind (Nam) = N_Expanded_Name
+--             and then Nkind (Selector_Name (Nam)) = N_Operator_Symbol
+--             and then Scope (Entity (Nam)) = Standard_Standard
+--           then
+--              declare
+--                 T : constant Entity_Id :=
+--                       Base_Type (Etype (First_Formal (New_S)));
+--  
+--              begin
+--                 Error_Msg_Node_2 := Prefix (Nam);
+--                 Error_Msg_NE
+--                   ("operator for type& is not declared in&", Prefix (Nam), T);
+--              end;
+--  
+--           else
             Error_Msg_NE
               ("no visible subprogram matches the specification for&",
                 Spec, New_S);
-         end if;
+         --end if;
 
          if Present (Candidate_Renaming) then
             declare
@@ -1468,181 +1415,6 @@ package body Sem_Ch8 is
       end if;
    end Applicable_Use;
 
-   ------------------------
-   -- Attribute_Renaming --
-   ------------------------
-
-   procedure Attribute_Renaming (N : Node_Id) is
-      Loc        : constant Source_Ptr := Sloc (N);
-      Nam        : constant Node_Id    := Name (N);
-      Spec       : constant Node_Id    := Specification (N);
-      New_S      : constant Entity_Id  := Defining_Unit_Name (Spec);
-      Aname      : constant Name_Id    := Attribute_Name (Nam);
-
-      Form_Num   : Nat      := 0;
-      Expr_List  : List_Id  := No_List;
-
-      Attr_Node  : Node_Id;
-      Body_Node  : Node_Id;
-      Param_Spec : Node_Id;
-
-   begin
-      Generate_Definition (New_S);
-
-      --  This procedure is called in the context of subprogram renaming,
-      --  and thus the attribute must be one that is a subprogram. All of
-      --  those have at least one formal parameter, with the singular
-      --  exception of AST_Entry (which is a real oddity, it is odd that
-      --  this can be renamed at all!)
-
-      if not Is_Non_Empty_List (Parameter_Specifications (Spec)) then
-         if Aname /= Name_AST_Entry then
-            Error_Msg_N
-              ("subprogram renaming an attribute must have formals", N);
-            return;
-         end if;
-
-      else
-         Param_Spec := First (Parameter_Specifications (Spec));
-
-         while Present (Param_Spec) loop
-            Form_Num := Form_Num + 1;
-
-            if Nkind (Parameter_Type (Param_Spec)) /= N_Access_Definition then
-               Find_Type (Parameter_Type (Param_Spec));
-
-               --  The profile of the new entity denotes the base type (s) of
-               --  the types given in the specification. For access parameters
-               --  there are no subtypes involved.
-
-               Rewrite (Parameter_Type (Param_Spec),
-                New_Reference_To
-                  (Base_Type (Entity (Parameter_Type (Param_Spec))), Loc));
-            end if;
-
-            if No (Expr_List) then
-               Expr_List := New_List;
-            end if;
-
-            Append_To (Expr_List,
-              Make_Identifier (Loc,
-                Chars => Chars (Defining_Identifier (Param_Spec))));
-
-            --  The expressions in the attribute reference are not freeze
-            --   points. Neither is the attribute as a whole, see below.
-
-            Set_Must_Not_Freeze (Last (Expr_List));
-            Next (Param_Spec);
-         end loop;
-      end if;
-
-      --  Immediate error if too many formals. Other mismatches in numbers
-      --  of number of types of parameters are detected when we analyze the
-      --  body of the subprogram that we construct.
-
-      if Form_Num > 2 then
-         Error_Msg_N ("too many formals for attribute", N);
-
-      elsif
-        Aname = Name_Compose      or else
-        Aname = Name_Exponent     or else
-        Aname = Name_Leading_Part or else
-        Aname = Name_Pos          or else
-        Aname = Name_Round        or else
-        Aname = Name_Scaling      or else
-        Aname = Name_Val
-      then
-         if Nkind (N) = N_Subprogram_Renaming_Declaration
-           and then Present (Corresponding_Spec (N))
-           and then Nkind (Unit_Declaration_Node (Corresponding_Spec (N))) =
-                                   N_Formal_Subprogram_Declaration
-         then
-            Error_Msg_N
-              ("generic actual cannot be attribute involving universal type",
-               Nam);
-         else
-            Error_Msg_N
-              ("attribute involving a universal type cannot be renamed",
-               Nam);
-         end if;
-      end if;
-
-      --  AST_Entry is an odd case. It doesn't really make much sense to
-      --  allow it to be renamed, but that's the DEC rule, so we have to
-      --  do it right. The point is that the AST_Entry call should be made
-      --  now, and what the function will return is the returned value.
-
-      --  Note that there is no Expr_List in this case anyway
-
-      --  For all other attributes, we rewrite the attribute node to have
-      --  a list of expressions corresponding to the subprogram formals.
-      --  A renaming declaration is not a freeze point, and the analysis of
-      --  the attribute reference should not freeze the type of the prefix.
-
-         Attr_Node :=
-           Make_Attribute_Reference (Loc,
-             Prefix         => Prefix (Nam),
-             Attribute_Name => Aname,
-             Expressions    => Expr_List);
-
-         Set_Must_Not_Freeze (Attr_Node);
-         Set_Must_Not_Freeze (Prefix (Nam));
-      
-      --  Case of renaming a function
-
-      if Nkind (Spec) = N_Function_Specification then
-
-         if Is_Procedure_Attribute_Name (Aname) then
-            Error_Msg_N ("attribute can only be renamed as procedure", Nam);
-            return;
-         end if;
-
-         Find_Type (Subtype_Mark (Spec));
-         Rewrite (Subtype_Mark (Spec),
-             New_Reference_To (Base_Type (Entity (Subtype_Mark (Spec))), Loc));
-
-         Body_Node :=
-           Make_Subprogram_Body (Loc,
-             Specification => Spec,
-             Declarations => New_List,
-             Handled_Statement_Sequence =>
-               Make_Handled_Sequence_Of_Statements (Loc,
-                   Statements => New_List (
-                     Make_Return_Statement (Loc,
-                       Expression => Attr_Node))));
-
-      --  Case of renaming a procedure
-
-      else
-         if not Is_Procedure_Attribute_Name (Aname) then
-            Error_Msg_N ("attribute can only be renamed as function", Nam);
-            return;
-         end if;
-
-         Body_Node :=
-           Make_Subprogram_Body (Loc,
-             Specification => Spec,
-             Declarations => New_List,
-             Handled_Statement_Sequence =>
-               Make_Handled_Sequence_Of_Statements (Loc,
-                   Statements => New_List (Attr_Node)));
-      end if;
-
-      Rewrite (N, Body_Node);
-      Analyze (N);
-
-      Set_Etype (New_S, Base_Type (Etype (New_S)));
-
-      --  We suppress elaboration warnings for the resulting entity, since
-      --  clearly they are not needed, and more particularly, in the case
-      --  of a generic formal subprogram, the resulting entity can appear
-      --  after the instantiation itself, and thus look like a bogus case
-      --  of access before elaboration.
-
-      Set_Suppress_Elaboration_Warnings (New_S);
-
-   end Attribute_Renaming;
-
    ----------------------
    -- Chain_Use_Clause --
    ----------------------
@@ -1787,7 +1559,6 @@ package body Sem_Ch8 is
          New_E := Defining_Entity (N);
          Set_Is_Pure                  (New_E, Is_Pure           (Old_E));
          Set_Is_Preelaborated         (New_E, Is_Preelaborated  (Old_E));
-         Set_Is_Shared_Passive        (New_E, Is_Shared_Passive (Old_E));
       end if;
    end Check_Library_Unit_Renaming;
 
@@ -1962,20 +1733,20 @@ package body Sem_Ch8 is
                   --  operators of a type that is use_visible through an active
                   --  use_type clause.
 
-                  if Nkind (Id) = N_Defining_Operator_Symbol
-                       and then
-                         (Is_Primitive_Operator (Id, First_Formal (Id))
-                            or else
-                          (Present (Next_Formal (First_Formal (Id)))
-                             and then
-                               Is_Primitive_Operator
-                                 (Id, Next_Formal (First_Formal (Id)))))
-                  then
-                     null;
-
-                  else
+--                    if Nkind (Id) = N_Defining_Operator_Symbol
+--                         and then
+--                           (Is_Primitive_Operator (Id, First_Formal (Id))
+--                              or else
+--                            (Present (Next_Formal (First_Formal (Id)))
+--                               and then
+--                                 Is_Primitive_Operator
+--                                   (Id, Next_Formal (First_Formal (Id)))))
+--                    then
+--                       null;
+--  
+--                    else
                      Set_Is_Potentially_Use_Visible (Id, False);
-                  end if;
+--                  end if;
 
                   if Is_Private_Type (Id)
                     and then Present (Full_View (Id))
@@ -2744,12 +2515,6 @@ package body Sem_Ch8 is
          then
             Collect_Interps (N);
 
-            --  If no homonyms were visible, the entity is unambiguous.
-
-            if not Is_Overloaded (N) then
-               Generate_Reference (E, N);
-            end if;
-
          --  Case of non-overloadable entity, set the entity providing that
          --  we do not have the case of a discriminant reference within a
          --  default expression. Such references are replaced with the
@@ -2768,14 +2533,9 @@ package body Sem_Ch8 is
                   R : constant Boolean := Referenced (E);
 
                begin
-                  Generate_Reference (E, N);
                   Set_Referenced (E, R);
                end;
 
-            --  Normal case, not a label. Generate reference.
-
-            else
-               Generate_Reference (E, N);
             end if;
 
             --  Set Entity, with style check if need be. If this is a
@@ -2792,8 +2552,7 @@ package body Sem_Ch8 is
             if not In_Default_Expression
               or else Inside_A_Generic
             then
-               Set_Entity_With_Style_Check (N, E);
-
+               Set_Entity (N, E);
             end if;
          end if;
       end;
@@ -2890,14 +2649,14 @@ package body Sem_Ch8 is
             Find_Expanded_Name (N);
             return;
 
-         elsif Nkind (Selector) = N_Operator_Symbol
-           and then Has_Implicit_Operator (N)
-         then
-            --  There is an implicit instance of the predefined operator in
-            --  the given scope. The operator entity is defined in Standard.
-            --  Has_Implicit_Operator makes the node into an Expanded_Name.
-
-            return;
+--           elsif Nkind (Selector) = N_Operator_Symbol
+--             and then Has_Implicit_Operator (N)
+--           then
+--              --  There is an implicit instance of the predefined operator in
+--              --  the given scope. The operator entity is defined in Standard.
+--              --  Has_Implicit_Operator makes the node into an Expanded_Name.
+--  
+--              return;
 
          elsif Nkind (Selector) = N_Character_Literal
            and then Has_Implicit_Character_Literal (N)
@@ -3043,8 +2802,7 @@ package body Sem_Ch8 is
       if Has_Homonym (Id) then
          Set_Entity (N, Id);
       else
-         Set_Entity_With_Style_Check (N, Id);
-         Generate_Reference (Id, N);
+         Set_Entity (N, Id);
       end if;
 
       if Is_Type (Id) then
@@ -3096,19 +2854,19 @@ package body Sem_Ch8 is
          end;
       end if;
 
-      if Nkind (Selector_Name (N)) = N_Operator_Symbol
-        and then Scope (Id) /= Standard_Standard
-      then
-         --  In addition to user-defined operators in the given scope,
-         --  there may be an implicit instance of the predefined
-         --  operator. The operator (defined in Standard) is found
-         --  in Has_Implicit_Operator, and added to the interpretations.
-         --  Procedure Add_One_Interp will determine which hides which.
-
-         if Has_Implicit_Operator (N) then
-            null;
-         end if;
-      end if;
+--        if Nkind (Selector_Name (N)) = N_Operator_Symbol
+--          and then Scope (Id) /= Standard_Standard
+--        then
+--           --  In addition to user-defined operators in the given scope,
+--           --  there may be an implicit instance of the predefined
+--           --  operator. The operator (defined in Standard) is found
+--           --  in Has_Implicit_Operator, and added to the interpretations.
+--           --  Procedure Add_One_Interp will determine which hides which.
+--  
+--           if Has_Implicit_Operator (N) then
+--              null;
+--           end if;
+--        end if;
    end Find_Expanded_Name;
 
    -------------------------
@@ -3744,8 +3502,7 @@ package body Sem_Ch8 is
 
             else
                C := Class_Wide_Type (Entity (Prefix (N)));
-               Set_Entity_With_Style_Check (N, C);
-               Generate_Reference (C, N);
+               Set_Entity (N, C);
                Set_Etype (N, C);
             end if;
 
@@ -3933,15 +3690,6 @@ package body Sem_Ch8 is
 
          if Present (Homonym (Predef_Op)) then
             Add_One_Interp (N, Homonym (Predef_Op), T);
-         end if;
-
-         --  The node is a reference to a predefined operator, and
-         --  an implicit reference to the type of its operands.
-
-         if Present (Op_Type) then
-            Generate_Operator_Reference (N, Op_Type);
-         else
-            Generate_Operator_Reference (N, T);
          end if;
       end Add_Implicit_Operator;
 
@@ -4315,7 +4063,6 @@ package body Sem_Ch8 is
 
          if Is_Library_Level_Entity (S) then
             Set_Is_Preelaborated (S, Is_Preelaborated (E));
-            Set_Is_Shared_Passive (S, Is_Shared_Passive (E));
             Set_Categorization_From_Scope (E => S, Scop => E);
          end if;
       end if;

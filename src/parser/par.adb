@@ -23,6 +23,7 @@
 
 with Ada.Text_Io; use Ada.Text_Io;
 
+with Aspects; use Aspects;
 with Atree;    use Atree;
 with Casing;   use Casing;
 with Debug;    use Debug;
@@ -31,6 +32,7 @@ with Errout;   use Errout;
 with Fname;    use Fname;
 with Lib;      use Lib;
 with Namet;    use Namet;
+with Namet.Sp; use Namet.Sp;
 with Nlists;   use Nlists;
 with Nmake;    use Nmake;
 with Opt;      use Opt;
@@ -41,7 +43,7 @@ with Sinput;   use Sinput;
 with Sinput.L; use Sinput.L;
 with Sinfo;    use Sinfo;
 with Snames;   use Snames;
-with Style;
+--with Style;
 with Table;
 with Tbuild;   use Tbuild;
 
@@ -390,6 +392,25 @@ function Par (Configuration_Pragmas : Boolean) return List_Id is
    SS_Whtm           : constant SS_Rec := SS_Rec'(F, F, F, F, F, F, T, F);
    SS_Unco           : constant SS_Rec := SS_Rec'(F, F, F, F, F, F, F, T);
 
+   type RS_Rec is record
+      RSallow : Boolean;      -- Reactive instruction allowed
+      Flow    : Boolean;      -- Flow instruction allowed
+      Ortm    : Boolean;      -- OR ELSE can terminate sequence
+      Andtm   : Boolean;      -- AND THEN can terminate sequence
+      Whtm    : Boolean;      -- WHEN can terminate sequence
+      Sreq    : Boolean;      -- at least one statement required
+      Unco    : Boolean;      -- Unconditional terminate after one statement
+   end record;
+   pragma Pack (RS_Rec);
+
+   RS_Not_Allow : constant RS_Rec := RS_Rec'(F, F, F, F, F, F, F);
+   RS_Allow     : constant RS_Rec := RS_Rec'(T, F, F, F, F, F, F);
+   RS_Flow      : constant RS_Rec := RS_Rec'(T, F, F, F, F, F, F);
+   RS_Ortm      : constant RS_Rec := RS_Rec'(T, F, T, F, F, F, F);
+   RS_Andtm     : constant RS_Rec := RS_Rec'(T, F, F, T, F, F, F);
+   RS_Whtm      : constant RS_Rec := RS_Rec'(T, F, F, F, T, F, F);
+   RS_Unco      : constant RS_Rec := RS_Rec'(T, F, F, F, F, F, F);
+
    Label_List : Elist_Id;
    --  List of label nodes for labels appearing in the current compilation.
    --  Used by Par.Labl to construct the corresponding implicit declarations.
@@ -422,6 +443,8 @@ function Par (Configuration_Pragmas : Boolean) return List_Id is
        E_Loop,            -- END LOOP;
        E_Record,          -- END RECORD;
        E_Select,          -- END SELECT;
+       E_Abort,           -- END ABORT;
+       E_Fork,            -- END FORK;
        E_Name,            -- END [name];
        E_Suspicious_Is,   -- END [name]; (case of suspicious IS)
        E_Bad_Is);         -- END [name]; (case of bad IS)
@@ -431,6 +454,20 @@ function Par (Configuration_Pragmas : Boolean) return List_Id is
    type Scope_Table_Entry is record
       Etyp : SS_End_Type;
       --  Type of end entry, as per above description
+
+      Reaction_Section : Boolean;
+      --  Set to true when the enclosing scope is a reactive section, and then
+      --  the reactive statementsd are allowed.  This flag is propaget throught
+      --  nested P_Sequence_Of_Statement (see par.Util.Push_Scope_Staack).
+
+      Flow_Section : Boolean;
+      --  Set to true when the enclosing scope is a flow section, and then
+      --  the limited set of flow statements are only allowed. This flag is
+      --  propaget throught nested P_Sequence_Of_Statement
+      --  (see par.Util.Push_Scope_Staack).
+
+      States_Node : Node_Id;
+      --  Accumulate states found in a reactive Entry.
 
       Lreq : Boolean;
       --  A flag indicating whether the label, if present, is required to
@@ -547,6 +584,7 @@ function Par (Configuration_Pragmas : Boolean) return List_Id is
       function P_Access_Definition                    return Node_Id;
       function P_Access_Type_Definition               return Node_Id;
       function P_Array_Type_Definition                return Node_Id;
+      function P_Reactive_Type_Definition             return Node_Id;
       function P_Basic_Declarative_Items              return List_Id;
       function P_Constraint_Opt                       return Node_Id;
       function P_Declarative_Part                     return List_Id;
@@ -557,6 +595,7 @@ function Par (Configuration_Pragmas : Boolean) return List_Id is
       function P_Range                                return Node_Id;
       function P_Range_Or_Subtype_Mark                return Node_Id;
       function P_Range_Constraint                     return Node_Id;
+      function P_Reactive_Definition                  return Node_Id;
       function P_Record_Definition                    return Node_Id;
       function P_Subtype_Indication                   return Node_Id;
       function P_Subtype_Mark                         return Node_Id;
@@ -680,13 +719,6 @@ function Par (Configuration_Pragmas : Boolean) return List_Id is
 
    package Ch11 is
       function P_Handled_Sequence_Of_Statements       return Node_Id;
-      function P_Raise_Statement                      return Node_Id;
-
-      function Parse_Exception_Handlers               return List_Id;
-      --  Parses the partial construct EXCEPTION followed by a list of
-      --  exception handlers which appears in a number of productions,
-      --  and returns the list of exception handlers.
-
    end Ch11;
 
    package Ch12 is
@@ -704,7 +736,68 @@ function Par (Configuration_Pragmas : Boolean) return List_Id is
       --  identifier or a selected component). The current token is an
       --  apostrophe and the following token is either a left paren or
       --  RANGE (the latter being an error to be caught by P_Code_Statement.
+      
+      function Aspect_Specifications_Present
+        (Strict : Boolean := False) return Boolean;
+      --  This function tests whether the next keyword is WITH followed by
+      --  something that looks reasonably like an aspect specification. If so,
+      --  True is returned. Otherwise False is returned. In either case control
+      --  returns with the token pointer unchanged (i.e. pointing to the WITH
+      --  token in the case where True is returned). This function takes care
+      --  of generating appropriate messages if aspect specifications appear
+      --  in versions of Ada prior to Ada 2012. The parameter strict can be
+      --  set to True, to be rather strict about considering something to be
+      --  an aspect specification. If Strict is False, then the circuitry is
+      --  rather more generous in considering something ill-formed to be an
+      --  attempt at an aspect specification. The default is more strict for
+      --  Ada versions before Ada 2012 (where aspect specifications are not
+      --  permitted). Note: this routine never checks the terminator token
+      --  for aspects so it does not matter whether the aspect specifications
+      --  are terminated by semicolon or some other character.
+      --
+      --  Note: This function also handles the case of WHEN used where WITH
+      --  was intended, and in that case posts an error and returns True.
+
+      procedure P_Aspect_Specifications
+        (Decl      : Node_Id;
+         Semicolon : Boolean := True);
+      --  This procedure scans out a series of aspect spefications. If argument
+      --  Semicolon is True, a terminating semicolon is also scanned. If this
+      --  argument is False, the scan pointer is left pointing past the aspects
+      --  and the caller must check for a proper terminator.
+      --
+      --  P_Aspect_Specifications is called with the current token pointing
+      --  to either a WITH keyword starting an aspect specification, or an
+      --  instance of what shpould be a terminator token. In the former case,
+      --  the aspect specifications are scanned out including the terminator
+      --  token if it it is a semicolon, and the Has_Aspect_Specifications
+      --  flag is set in the given declaration node. A list of aspects
+      --  is built and stored for this declaration node using a call to
+      --  Set_Aspect_Specifications. If no WITH keyword is present, then this
+      --  call has no effect other than scanning out the terminator if it is a
+      --  semicolon (with the exception that it detects WHEN used in place of
+      --  WITH).
+
+      --  If Decl is Error on entry, any scanned aspect specifications are
+      --  ignored and a message is output saying aspect specifications not
+      --  permitted here. If Decl is Empty, then scanned aspect specifications
+      --  are also ignored, but no error message is given (this is used when
+      --  the caller has already taken care of the error message).
+
+      function Get_Aspect_Specifications
+        (Semicolon : Boolean := True) return List_Id;
+      --  Parse a list of aspects but do not attach them to a declaration node.
+      --  Subsidiary to P_Aspect_Specifications procedure. Used when parsing
+      --  a subprogram specification that may be a declaration or a body.
+      --  Semicolon has the same meaning as for P_Aspect_Specifications above.
+
    end Ch13;
+   
+   package Ch14 is
+      
+      function P_Reactive_Procedure (Pf_Flags : Pf_Rec) return Node_Id;
+
+   end Ch14;
 
    --  Note: the parsing for annexe J features (i.e. obsolescent features)
    --  is found in the logical section where these features would be if
@@ -722,7 +815,9 @@ function Par (Configuration_Pragmas : Boolean) return List_Id is
 
    package Endh is
 
-      function Check_End return Boolean;
+      function Check_End
+        (Decl   : Node_Id    := Empty;
+         Is_Loc : Source_Ptr := No_Location) return Boolean;
       --  Called when an end sequence is required. In the absence of an error
       --  situation, Token contains Tok_End on entry, but in a missing end
       --  case, this may not be the case. Pop_End_Context is used to determine
@@ -733,6 +828,18 @@ function Par (Configuration_Pragmas : Boolean) return List_Id is
       --  Skip_And_Reject). Note that the END sequence includes a semicolon,
       --  except in the case of END RECORD, where a semicolon follows the END
       --  RECORD, but is not part of the record type definition itself.
+      --
+      --  If Decl is non-empty, then aspect specifications are permitted
+      --  following the end, and Decl is the declaration node with which
+      --  these aspect specifications are to be associated. If Decl is empty,
+      --  then aspect specifications are not permitted and will generate an
+      --  error message.
+      --
+      --  Is_Loc is set to other than the default only for the case of a
+      --  package declaration. It points to the IS keyword of the declaration,
+      --  and is used to specialize the error messages for misplaced aspect
+      --  specifications in this case. Note that Decl is always Empty if Is_Loc
+      --  is set.
 
       procedure End_Skip;
       --  Skip past an end sequence. On entry Token contains Tok_End, and we
@@ -742,7 +849,10 @@ function Par (Configuration_Pragmas : Boolean) return List_Id is
       --  position after the end sequence. We do not issue any additional
       --  error messages while carrying this out.
 
-      procedure End_Statements (Parent : Node_Id := Empty);
+   procedure End_Statements
+     (Parent  : Node_Id    := Empty;
+      Decl    : Node_Id    := Empty;
+      Is_Sloc : Source_Ptr := No_Location);
       --  Called when an end is required or expected to terminate a sequence
       --  of statements. The caller has already made an appropriate entry in
       --  the Scope.Table to describe the expected form of the end. This can
@@ -780,6 +890,11 @@ function Par (Configuration_Pragmas : Boolean) return List_Id is
       --  comma or right parenthesis or vertical bar is encountered at the
       --  current parenthesis level (a parenthesis level counter is maintained
       --  to carry out this test).
+
+      procedure Resync_Past_Malformed_Aspect;
+      --  Used when parsing aspect specifications to skip a malformed aspect.
+      --  The scan pointer is positioned next to a comma, a semicolon or "is"
+      --  when the aspect applies to a body.
 
       procedure Resync_Past_Semicolon;
       --  Used if an error occurs while scanning a sequence of declarations.
@@ -898,12 +1013,6 @@ function Par (Configuration_Pragmas : Boolean) return List_Id is
       --  spelling of the given keyword token, and if so, issues an error
       --  message, sets Token from T, and returns True. Otherwise Token is
       --  unchanged, and False is returned.
-
-      procedure Check_Bad_Layout;
-      --  Check for bad indentation in RM checking mode. Used for statements
-      --  and declarations. Checks if current token is at start of line and
-      --  is exdented from the current expected end column, and if so an
-      --  error message is generated.
 
       procedure Check_Misspelling_Of (T : Token_Type);
       pragma Inline (Check_Misspelling_Of);
@@ -1072,6 +1181,7 @@ function Par (Configuration_Pragmas : Boolean) return List_Id is
    use Ch11;
    use Ch12;
    use Ch13;
+   use Ch14;
 
    use Endh;
    use Tchk;
@@ -1089,6 +1199,7 @@ function Par (Configuration_Pragmas : Boolean) return List_Id is
    package body Ch11 is separate;
    package body Ch12 is separate;
    package body Ch13 is separate;
+   package body Ch14 is separate;
 
    package body Endh is separate;
    package body Tchk is separate;
@@ -1190,6 +1301,8 @@ begin
          Scope.Init;
          Scope.Increment_Last;
          Scope.Table (0).Etyp := E_Dummy;
+	 Scope.Table (0).Reaction_Section := False;
+	 Scope.Table (0).Flow_Section := False;
          SIS_Entry_Active := False;
          Last_Resync_Point := No_Location;
 

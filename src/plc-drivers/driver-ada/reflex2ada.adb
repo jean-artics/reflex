@@ -33,14 +33,14 @@ with Gnatvsn;  use Gnatvsn;
 with Hostparm;
 with Inline;
 with Lib;      use Lib;
-with Lib.Writ; use Lib.Writ;
-with Lib.Xref;
+--with Lib.Writ; use Lib.Writ;
+--with Lib.Xref;
 with Namet;    use Namet;
 with Nlists;
 with Opt;      use Opt;
 with Osint;    use Osint;
 with Output;   use Output;
-with Prepcomp;
+--with Prepcomp;
 with Repinfo;  use Repinfo;
 with Restrict;
 with Rident;
@@ -48,7 +48,7 @@ with Sem;
 with Sem_Ch8;
 with Sem_Ch12;
 with Sem_Ch13;
-with Sem_Elim;
+--with Sem_Elim;
 with Sem_Eval;
 with Sem_Type;
 with Sinfo;    use Sinfo;
@@ -59,7 +59,7 @@ with Stringt;
 with Targparm;
 with Tree_Gen;
 with Treepr;   use Treepr;
-with Ttypes;
+--with Ttypes;
 with Types;    use Types;
 with Namet; use Namet;
 with Uintp;    use Uintp;
@@ -74,6 +74,7 @@ with Reflex_Options;
 with Reflex.Gen.Ada_Outputs;
 with Rxada.Generator;
 with Reflex.Names; use Reflex.Names;
+with Reflex.Vertices; use Reflex.Vertices;
 
 with System.Assertions;
 with Ada.Text_IO; use Ada.Text_IO;
@@ -103,7 +104,7 @@ begin
       Osint.Initialize;
       Fmap.Reset_Tables;
       Lib.Initialize;
-      Lib.Xref.Initialize;
+--      Lib.Xref.Initialize;
       Scan_Compiler_Arguments;
       Osint.Add_Default_Search_Dirs;
 
@@ -122,9 +123,9 @@ begin
       Sem_Ch8.Initialize;
       Sem_Ch12.Initialize;
       Sem_Ch13.Initialize;
-      Sem_Elim.Initialize;
       Sem_Eval.Initialize;
       Sem_Type.Init_Interp_Tables;
+      Reflex.Vertices.Initialize_Vertices;
 
       --  Acquire target parameters from system.rxs (source of package System)
 
@@ -475,12 +476,12 @@ begin
       --  since even if we do not semantically depend on this, Targparm
       --  has read system parameters from the system.rxs file.
 
-      Lib.Writ.Ensure_System_Dependency;
+      --Lib.Writ.Ensure_System_Dependency;
 
       --  Add dependencies, if any, on preprocessing data file and on
       --  preprocessing definition file(s).
 
-      Prepcomp.Add_Dependencies;
+      --Prepcomp.Add_Dependencies;
 
       --  Back end needs to explicitly unlock tables it needs to touch
 

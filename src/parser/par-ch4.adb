@@ -215,14 +215,6 @@ package body Ch4 is
          end if;
       end loop;
 
-      --  We have now scanned out a qualified designator. If the last token is
-      --  an operator symbol, then we certainly do not have the Snam case, so
-      --  we can just use the normal name extension check circuit
-
-      if Prev_Token = Tok_Operator_Symbol then
-         goto Scan_Name_Extension;
-      end if;
-
       --  We have scanned out a qualified simple name, check for name extension
       --  Note that we know there is no dot here at this stage, so the only
       --  possible cases of name extension are apostrophe and left paren.
@@ -402,22 +394,12 @@ package body Ch4 is
                   end if;
                end if;
 
-               if Style_Check then
-                  Style.Check_Attribute_Name (False);
-               end if;
-
                Delete_Node (Token_Node);
 
             --  Here for case of attribute designator is not an identifier
 
             else
-               if Token = Tok_Delta then
-                  Attr_Name := Name_Delta;
-
-               elsif Token = Tok_Digits then
-                  Attr_Name := Name_Digits;
-
-               elsif Token = Tok_Access then
+               if Token = Tok_Access then
                   Attr_Name := Name_Access;
 
                elsif Apostrophe_Should_Be_Semicolon then
@@ -427,10 +409,6 @@ package body Ch4 is
                else
                   Error_Msg_AP ("attribute designator expected");
                   raise Error_Resync;
-               end if;
-
-               if Style_Check then
-                  Style.Check_Attribute_Name (True);
                end if;
             end if;
 
@@ -576,9 +554,9 @@ package body Ch4 is
             --  An operator node is legal as a prefix to other names,
             --  but not for a slice.
 
-            if Nkind (Prefix_Node) = N_Operator_Symbol then
-               Error_Msg_N ("illegal prefix for slice", Prefix_Node);
-            end if;
+--              if Nkind (Prefix_Node) = N_Operator_Symbol then
+--                 Error_Msg_N ("illegal prefix for slice", Prefix_Node);
+--              end if;
 
             --  If we have a name extension, go scan it
 
@@ -1022,10 +1000,6 @@ package body Ch4 is
       Attr_Node := New_Node (N_Attribute_Reference, Token_Ptr);
       Set_Prefix (Attr_Node, Prefix_Node);
       Scan; -- past apostrophe
-
-      if Style_Check then
-         Style.Check_Attribute_Name (True);
-      end if;
 
       Set_Attribute_Name (Attr_Node, Name_Range);
       Scan; -- past RANGE
@@ -1772,7 +1746,6 @@ package body Ch4 is
 
          else
             if Token = Tok_Double_Asterisk then
-               if Style_Check then Style.Check_Exponentiation_Operator; end if;
                Node2 := New_Node (N_Op_Expon, Token_Ptr);
                Scan; -- past **
                Set_Left_Opnd (Node2, Node1);
@@ -1785,7 +1758,6 @@ package body Ch4 is
                exit when Token not in Token_Class_Mulop;
                Tokptr := Token_Ptr;
                Node2 := New_Node (P_Multiplying_Operator, Tokptr);
-               if Style_Check then Style.Check_Binary_Operator; end if;
                Scan; -- past operator
                Set_Left_Opnd (Node2, Node1);
                Set_Right_Opnd (Node2, P_Factor);
@@ -1797,7 +1769,6 @@ package body Ch4 is
                exit when Token not in Token_Class_Binary_Addop;
                Tokptr := Token_Ptr;
                Node2 := New_Node (P_Binary_Adding_Operator, Tokptr);
-               if Style_Check then Style.Check_Binary_Operator; end if;
                Scan; -- past operator
                Set_Left_Opnd (Node2, Node1);
                Set_Right_Opnd (Node2, P_Term);
@@ -1816,7 +1787,6 @@ package body Ch4 is
          if Token in Token_Class_Unary_Addop then
             Tokptr := Token_Ptr;
             Node1 := New_Node (P_Unary_Adding_Operator, Tokptr);
-            if Style_Check then Style.Check_Unary_Plus_Or_Minus; end if;
             Scan; -- past operator
             Set_Right_Opnd (Node1, P_Term);
             Set_Op_Name (Node1);
@@ -1974,7 +1944,6 @@ package body Ch4 is
    begin
       if Token = Tok_Abs then
          Node1 := New_Node (N_Op_Abs, Token_Ptr);
-         if Style_Check then Style.Check_Abs_Not; end if;
          Scan; -- past ABS
          Set_Right_Opnd (Node1, P_Primary);
          Set_Op_Name (Node1);
@@ -1982,7 +1951,6 @@ package body Ch4 is
 
       elsif Token = Tok_Not then
          Node1 := New_Node (N_Op_Not, Token_Ptr);
-         if Style_Check then Style.Check_Abs_Not; end if;
          Scan; -- past NOT
          Set_Right_Opnd (Node1, P_Primary);
          Set_Op_Name (Node1);
@@ -2031,7 +1999,7 @@ package body Ch4 is
             --  that string literal is included in name (as operator symbol)
             --  and type conversion is included in name (as indexed component).
 
-            when Tok_Char_Literal | Tok_Operator_Symbol | Tok_Identifier =>
+            when Tok_Char_Literal | Tok_Identifier =>
                Node1 := P_Name;
 
                --  All done unless apostrophe follows
@@ -2141,7 +2109,6 @@ package body Ch4 is
    function P_Logical_Operator return Node_Kind is
    begin
       if Token = Tok_And then
-         if Style_Check then Style.Check_Binary_Operator; end if;
          Scan; -- past AND
 
          if Token = Tok_Then then
@@ -2152,7 +2119,6 @@ package body Ch4 is
          end if;
 
       elsif Token = Tok_Or then
-         if Style_Check then Style.Check_Binary_Operator; end if;
          Scan; -- past OR
 
          if Token = Tok_Else then
@@ -2163,7 +2129,6 @@ package body Ch4 is
          end if;
 
       else -- Token = Tok_Xor
-         if Style_Check then Style.Check_Binary_Operator; end if;
          Scan; -- past XOR
          return N_Op_Xor;
       end if;
@@ -2202,7 +2167,6 @@ package body Ch4 is
       end if;
 
       Op_Kind := Relop_Node (Token);
-      if Style_Check then Style.Check_Binary_Operator; end if;
       Scan; -- past operator token
 
       if Prev_Token = Tok_Not then

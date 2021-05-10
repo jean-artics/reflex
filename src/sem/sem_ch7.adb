@@ -31,10 +31,8 @@ with Debug;    use Debug;
 with Einfo;    use Einfo;
 with Elists;   use Elists;
 with Errout;   use Errout;
---with Exp_Disp; use Exp_Disp;
 with Exp_Dbug; use Exp_Dbug;
 with Lib;      use Lib;
-with Lib.Xref; use Lib.Xref;
 with Namet;    use Namet;
 with Nmake;    use Nmake;
 with Nlists;   use Nlists;
@@ -52,7 +50,6 @@ with Snames;   use Snames;
 with Stand;    use Stand;
 with Sinfo;    use Sinfo;
 with Sinput;   use Sinput;
-with Style;
 
 package body Sem_Ch7 is
 
@@ -218,7 +215,6 @@ package body Sem_Ch7 is
       end if;
 
       Set_Is_Compilation_Unit (Body_Id, Is_Compilation_Unit (Spec_Id));
-      Style.Check_Identifier (Body_Id, Spec_Id);
 
       if Is_Child_Unit (Spec_Id) then
          if Nkind (Parent (N)) /= N_Compilation_Unit then
@@ -284,7 +280,7 @@ package body Sem_Ch7 is
 
       New_Scope (Spec_Id);
 
-      Set_Categorization_From_Pragmas (N);
+      --Set_Categorization_From_Pragmas (N);
 
       Install_Visible_Declarations (Spec_Id);
       Install_Private_Declarations (Spec_Id);
@@ -325,12 +321,6 @@ package body Sem_Ch7 is
 
       Validate_Categorization_Dependency (N, Spec_Id);
       Check_Completion (Body_Id);
-
-      --  Generate start of body reference. Note that we do this fairly late,
-      --  because the call will use In_Extended_Main_Source_Unit as a check,
-      --  and we want to make sure that Corresponding_Stub links are set
-
-      Generate_Reference (Spec_Id, Body_Id, 'b', Set_Ref => False);
 
       --  For a generic package, collect global references and mark
       --  them on the original body so that they are not resolved
@@ -548,7 +538,6 @@ package body Sem_Ch7 is
                   --  imported/exported, and which have no interface name.
 
                   elsif K = N_Object_Declaration
-                    or else K = N_Exception_Declaration
                     or else K = N_Subprogram_Declaration
                   then
                      E := Defining_Entity (D);
@@ -607,7 +596,6 @@ package body Sem_Ch7 is
       PF : Boolean;
 
    begin
-      Generate_Definition (Id);
       Enter_Name (Id);
       Set_Ekind (Id, E_Package);
       Set_Etype (Id, Standard_Void_Type);
@@ -617,7 +605,7 @@ package body Sem_Ch7 is
       PF := Is_Pure (Enclosing_Lib_Unit_Entity);
       Set_Is_Pure (Id, PF);
 
-      Set_Categorization_From_Pragmas (N);
+      --Set_Categorization_From_Pragmas (N);
 
       if Debug_Flag_C then
          Write_Str ("====  Compiling package spec ");
@@ -666,10 +654,6 @@ package body Sem_Ch7 is
       --  and on the chain whose first element is FE. A recursive call is
       --  made for all packages and generic packages.
 
-      procedure Generate_Parent_References;
-      --  For a child unit, generate references to parent units, for
-      --  GPS navigation purposes.
-
       function Is_Public_Child (Child, Unit : Entity_Id) return Boolean;
       --  Child and Unit are entities of compilation units. True if Child
       --  is a public child of Parent as defined in 10.1.1
@@ -712,50 +696,6 @@ package body Sem_Ch7 is
             Next_Entity (E);
          end loop;
       end Clear_Constants;
-
-      --------------------------------
-      -- Generate_Parent_References --
-      --------------------------------
-
-      procedure Generate_Parent_References is
-         Decl : constant Node_Id := Parent (N);
-
-      begin
-         if Id = Cunit_Entity (Main_Unit)
-           or else Parent (Decl) = Library_Unit (Cunit (Main_Unit))
-         then
-            Generate_Reference (Id, Scope (Id), 'k', False);
-
-         elsif Nkind (Unit (Cunit (Main_Unit))) /= N_Subprogram_Body
-         then
-            --  If current unit is an ancestor of main unit, generate
-            --  a reference to its own parent.
-
-            declare
-               U         : Node_Id;
-               Main_Spec : Node_Id := Unit (Cunit (Main_Unit));
-
-            begin
-               if Nkind (Main_Spec) = N_Package_Body then
-                  Main_Spec := Unit (Library_Unit (Cunit (Main_Unit)));
-               end if;
-
-               U := Parent_Spec (Main_Spec);
-               while Present (U) loop
-                  if U = Parent (Decl) then
-                     Generate_Reference (Id, Scope (Id), 'k',  False);
-                     exit;
-
-                  elsif Nkind (Unit (U)) = N_Package_Body then
-                     exit;
-
-                  else
-                     U := Parent_Spec (Unit (U));
-                  end if;
-               end loop;
-            end;
-         end if;
-      end Generate_Parent_References;
 
       ---------------------
       -- Is_Public_Child --
@@ -821,8 +761,6 @@ package body Sem_Ch7 is
       Public_Child := False;
 
       if Present (Parent_Spec (Parent (N))) then
-         Generate_Parent_References;
-
          declare
             Par       : Entity_Id := Id;
             Pack_Decl : Node_Id;
@@ -933,7 +871,6 @@ package body Sem_Ch7 is
       Id : constant Entity_Id := Defining_Identifier (N);
 
    begin
-      Generate_Definition (Id);
       Set_Is_Pure         (Id, PF);
       Init_Size_Align     (Id);
 

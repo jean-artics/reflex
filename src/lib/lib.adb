@@ -809,7 +809,7 @@ package body Lib is
    -- List --
    ----------
 
-   procedure List (File_Names_Only : Boolean := False) is separate;
+   --  procedure List (File_Names_Only : Boolean := False) is separate;
 
    ----------
    -- Lock --
@@ -871,7 +871,7 @@ package body Lib is
    -- Sort --
    ----------
 
-   procedure Sort (Tbl : in out Unit_Ref_Table) is separate;
+--   procedure Sort (Tbl : in out Unit_Ref_Table) is separate;
 
    ------------------------------
    -- Store_Compilation_Switch --

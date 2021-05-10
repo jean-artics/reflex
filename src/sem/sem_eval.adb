@@ -435,10 +435,6 @@ package body Sem_Eval is
                V := Uint_1;
                return;
 
-            elsif Attribute_Name (N) = Name_Pred then
-               R := First (Expressions (N));
-               V := Uint_Minus_1;
-               return;
             end if;
          end if;
 
@@ -873,13 +869,6 @@ package body Sem_Eval is
             K = N_Null
          then
             return True;
-
-         --  Any reference to Null_Parameter is known at compile time. No
-         --  other attribute references (that have not already been folded)
-         --  are known at compile time.
-
-         elsif K = N_Attribute_Reference then
-            return Attribute_Name (Op) = Name_Null_Parameter;
          end if;
       end if;
 
@@ -2625,13 +2614,6 @@ package body Sem_Eval is
       elsif Kind = N_Integer_Literal then
          return Intval (N);
 
-      --  Peculiar VMS case, if we have xxx'Null_Parameter, return zero
-
-      elsif Kind = N_Attribute_Reference
-        and then Attribute_Name (N) = Name_Null_Parameter
-      then
-         return Uint_0;
-
       --  Otherwise must be character literal
 
       else
@@ -2694,13 +2676,6 @@ package body Sem_Eval is
 
       elsif Kind = N_Integer_Literal then
          Val := Intval (N);
-
-      --  Peculiar VMS case, if we have xxx'Null_Parameter, return zero
-
-      elsif Kind = N_Attribute_Reference
-        and then Attribute_Name (N) = Name_Null_Parameter
-      then
-         Val := Uint_0;
 
       --  Otherwise must be character literal
 
@@ -2784,12 +2759,6 @@ package body Sem_Eval is
             end if;
          end if;
 
-      --  Peculiar VMS case, if we have xxx'Null_Parameter, return 0.0
-
-      elsif Kind = N_Attribute_Reference
-        and then Attribute_Name (N) = Name_Null_Parameter
-      then
-         return Ureal_0;
       end if;
 
       --  If we fall through, we have a node that cannot be interepreted
@@ -3491,33 +3460,8 @@ package body Sem_Eval is
    -------------------------
 
    procedure Rewrite_In_Raise_CE (N : Node_Id; Exp : Node_Id) is
-      Typ : constant Entity_Id := Etype (N);
-
    begin
-      --  If we want to raise CE in the condition of a raise_CE node
-      --  we may as well get rid of the condition
-
-      if Present (Parent (N))
-        and then Nkind (Parent (N)) = N_Raise_Constraint_Error
-      then
-         Set_Condition (Parent (N), Empty);
-
-      --  If the expression raising CE is a N_Raise_CE node, we can use
-      --  that one. We just preserve the type of the context
-
-      elsif Nkind (Exp) = N_Raise_Constraint_Error then
-         Rewrite (N, Exp);
-         Set_Etype (N, Typ);
-
-      --  We have to build an explicit raise_ce node
-
-      else
-         Rewrite (N,
-           Make_Raise_Constraint_Error (Sloc (Exp),
-             Reason => CE_Range_Check_Failed));
-         Set_Raises_Constraint_Error (N);
-         Set_Etype (N, Typ);
-      end if;
+      null;
    end Rewrite_In_Raise_CE;
 
    ---------------------
@@ -4025,7 +3969,7 @@ package body Sem_Eval is
       --  If we got through those checks, test particular node kind
 
       case Nkind (N) is
-         when N_Expanded_Name | N_Identifier | N_Operator_Symbol =>
+         when N_Expanded_Name | N_Identifier => -- | N_Operator_Symbol =>
             E := Entity (N);
 
             if Is_Named_Number (E) then

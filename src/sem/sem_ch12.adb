@@ -33,7 +33,7 @@ with Hostparm;
 with Inline;   use Inline;
 with Lib;      use Lib;
 with Lib.Load; use Lib.Load;
-with Lib.Xref; use Lib.Xref;
+--with Lib.Xref; use Lib.Xref;
 with Nlists;   use Nlists;
 with Nmake;    use Nmake;
 with Opt;      use Opt;
@@ -48,7 +48,7 @@ with Sem_Ch8;  use Sem_Ch8;
 with Sem_Ch10; use Sem_Ch10;
 with Sem_Ch13; use Sem_Ch13;
 -- with Sem_Elab; use Sem_Elab;
-with Sem_Elim; use Sem_Elim;
+--with Sem_Elim; use Sem_Elim;
 with Sem_Eval; use Sem_Eval;
 with Sem_Res;  use Sem_Res;
 with Sem_Type; use Sem_Type;
@@ -830,7 +830,7 @@ package body Sem_Ch12 is
                   Found := Explicit_Generic_Actual_Parameter (Actual);
                   Set_Entity (Selector_Name (Actual), A_F);
                   Set_Etype  (Selector_Name (Actual), Etype (A_F));
-                  Generate_Reference (A_F, Selector_Name (Actual));
+--                  Generate_Reference (A_F, Selector_Name (Actual));
                   Found_Assoc := Actual;
                   Num_Matched := Num_Matched + 1;
                   exit;
@@ -1001,18 +1001,6 @@ package body Sem_Ch12 is
                      if Nkind (I_Node) /= N_Formal_Package_Declaration then
                         Append_Elmt (Entity (Match), Actual_Types);
                      end if;
-                  end if;
-
-                  --  A remote access-to-class-wide type must not be an
-                  --  actual parameter for a generic formal of an access
-                  --  type (E.2.2 (17)).
-
-                  if Nkind (Analyzed_Formal) = N_Formal_Type_Declaration
-                    and then
-                      Nkind (Formal_Type_Definition (Analyzed_Formal)) =
-                                            N_Access_To_Object_Definition
-                  then
-                     Validate_Remote_Access_To_Class_Wide_Type (Match);
                   end if;
 
                when N_Formal_Subprogram_Declaration =>
@@ -1533,7 +1521,7 @@ package body Sem_Ch12 is
 
          if In_Extended_Main_Source_Unit (N) then
             Set_Is_Instantiated (Gen_Unit);
-            Generate_Reference  (Gen_Unit, N);
+--            Generate_Reference  (Gen_Unit, N);
          end if;
 
          New_N :=
@@ -1684,10 +1672,10 @@ package body Sem_Ch12 is
       --  Else default is bound at the point of generic declaration
 
       elsif Present (Def) then
-         if Nkind (Def) = N_Operator_Symbol then
-            Find_Direct_Name (Def);
+--           if Nkind (Def) = N_Operator_Symbol then
+--              Find_Direct_Name (Def);
 
-         elsif Nkind (Def) /= N_Attribute_Reference then
+         if Nkind (Def) /= N_Attribute_Reference then
             Analyze (Def);
 
          else
@@ -1901,7 +1889,7 @@ package body Sem_Ch12 is
          Next (Gen_Parm_Decl);
       end loop;
 
-      Generate_Reference_To_Generic_Formals (Current_Scope);
+--      Generate_Reference_To_Generic_Formals (Current_Scope);
    end Analyze_Generic_Formal_Part;
 
    ------------------------------------------
@@ -1961,7 +1949,7 @@ package body Sem_Ch12 is
       Set_Parent_Spec (New_N, Save_Parent);
       Rewrite (N, New_N);
       Id := Defining_Entity (N);
-      Generate_Definition (Id);
+--      Generate_Definition (Id);
 
       --  Expansion is not applied to generic units.
 
@@ -1974,7 +1962,7 @@ package body Sem_Ch12 is
       Enter_Generic_Scope (Id);
       Set_Inner_Instances (Id, New_Elmt_List);
 
-      Set_Categorization_From_Pragmas (N);
+      ---Set_Categorization_From_Pragmas (N);
       Set_Is_Pure (Id, Is_Pure (Current_Scope));
 
       --  Link the declaration of the generic homonym in the generic copy
@@ -2046,12 +2034,12 @@ package body Sem_Ch12 is
 
       Spec := Specification (N);
       Id := Defining_Entity (Spec);
-      Generate_Definition (Id);
+--      Generate_Definition (Id);
 
-      if Nkind (Id) = N_Defining_Operator_Symbol then
-         Error_Msg_N
-           ("operator symbol not allowed for generic subprogram", Id);
-      end if;
+--        if Nkind (Id) = N_Defining_Operator_Symbol then
+--           Error_Msg_N
+--             ("operator symbol not allowed for generic subprogram", Id);
+--        end if;
 
       Start_Generic;
 
@@ -2090,7 +2078,7 @@ package body Sem_Ch12 is
          Set_Body_Required (Parent (N), Unit_Requires_Body (Id));
       end if;
 
-      Set_Categorization_From_Pragmas (N);
+      --Set_Categorization_From_Pragmas (N);
       Validate_Categorization_Dependency (N, Id);
 
       Save_Global_References (Original_Node (N));
@@ -2098,7 +2086,7 @@ package body Sem_Ch12 is
       End_Generic;
       End_Scope;
       Exit_Generic_Scope (Id);
-      Generate_Reference_To_Formals (Id);
+--      Generate_Reference_To_Formals (Id);
    end Analyze_Generic_Subprogram_Declaration;
 
    -----------------------------------
@@ -2216,7 +2204,7 @@ package body Sem_Ch12 is
          Act_Decl_Name := Act_Decl_Id;
       end if;
 
-      Generate_Definition (Act_Decl_Id);
+--      Generate_Definition (Act_Decl_Id);
       Pre_Analyze_Actuals (N);
 
       Init_Env;
@@ -2240,11 +2228,11 @@ package body Sem_Ch12 is
 
       if In_Extended_Main_Source_Unit (N) then
          Set_Is_Instantiated (Gen_Unit);
-         Generate_Reference  (Gen_Unit, N);
+--         Generate_Reference  (Gen_Unit, N);
 
          if Present (Renamed_Object (Gen_Unit)) then
             Set_Is_Instantiated (Renamed_Object (Gen_Unit));
-            Generate_Reference  (Renamed_Object (Gen_Unit), N);
+--            Generate_Reference  (Renamed_Object (Gen_Unit), N);
          end if;
       end if;
 
@@ -2538,7 +2526,7 @@ package body Sem_Ch12 is
             end if;
          end if;
 
-         Set_Categorization_From_Pragmas (Act_Decl);
+         --Set_Categorization_From_Pragmas (Act_Decl);
 
          if Parent_Installed then
             Hide_Current_Scope;
@@ -3013,7 +3001,6 @@ package body Sem_Ch12 is
          Set_Is_Child_Unit (Act_Decl_Id, Is_Child_Unit (Defining_Entity (N)));
          Set_Is_Child_Unit (Anon_Id, Is_Child_Unit (Defining_Entity (N)));
          New_Overloaded_Entity (Act_Decl_Id);
-         Check_Eliminated  (Act_Decl_Id);
 
          --  In compilation unit case, kill elaboration checks on the
          --  instantiation, since they are never needed -- the body is
@@ -3031,9 +3018,9 @@ package body Sem_Ch12 is
 
          Set_Is_Frozen (Act_Decl_Id, False);
 
-         if Nkind (Defining_Entity (N)) = N_Defining_Operator_Symbol then
-            Valid_Operator_Definition (Act_Decl_Id);
-         end if;
+--           if Nkind (Defining_Entity (N)) = N_Defining_Operator_Symbol then
+--              Valid_Operator_Definition (Act_Decl_Id);
+--           end if;
 
          Set_Alias  (Act_Decl_Id, Anon_Id);
          Set_Parent (Act_Decl_Id, Parent (Anon_Id));
@@ -3065,7 +3052,7 @@ package body Sem_Ch12 is
       Check_Generic_Child_Unit (Gen_Id, Parent_Installed);
       Gen_Unit := Entity (Gen_Id);
 
-      Generate_Reference (Gen_Unit, Gen_Id);
+--      Generate_Reference (Gen_Unit, Gen_Id);
 
       if Nkind (Gen_Id) = N_Identifier
         and then Chars (Gen_Unit) = Chars (Defining_Entity (N))
@@ -3116,9 +3103,9 @@ package body Sem_Ch12 is
          Set_Entity (Gen_Id, Gen_Unit);
          Set_Is_Instantiated (Gen_Unit);
 
-         if In_Extended_Main_Source_Unit (N) then
-            Generate_Reference (Gen_Unit, N);
-         end if;
+--           if In_Extended_Main_Source_Unit (N) then
+--              Generate_Reference (Gen_Unit, N);
+--           end if;
 
          --  If renaming, get original unit
 
@@ -3129,7 +3116,7 @@ package body Sem_Ch12 is
          then
             Gen_Unit := Renamed_Object (Gen_Unit);
             Set_Is_Instantiated (Gen_Unit);
-            Generate_Reference  (Gen_Unit, N);
+--            Generate_Reference  (Gen_Unit, N);
          end if;
 
          if Contains_Instance_Of (Gen_Unit, Current_Scope, Gen_Id) then
@@ -3177,7 +3164,7 @@ package body Sem_Ch12 is
            Make_Subprogram_Declaration (Sloc (Act_Spec),
              Specification => Act_Spec);
 
-         Set_Categorization_From_Pragmas (Act_Decl);
+         --Set_Categorization_From_Pragmas (Act_Decl);
 
          if Parent_Installed then
             Hide_Current_Scope;
@@ -3204,7 +3191,7 @@ package body Sem_Ch12 is
             end if;
          end if;
 
-         Generate_Definition (Act_Decl_Id);
+--         Generate_Definition (Act_Decl_Id);
 
          Set_Is_Inlined (Act_Decl_Id, Is_Inlined (Gen_Unit));
          Set_Is_Inlined (Anon_Id,     Is_Inlined (Gen_Unit));
@@ -4433,7 +4420,7 @@ package body Sem_Ch12 is
       elsif     Nkind (New_N) = N_Identifier
         or else Nkind (New_N) = N_Character_Literal
         or else Nkind (New_N) = N_Expanded_Name
-        or else Nkind (New_N) = N_Operator_Symbol
+--        or else Nkind (New_N) = N_Operator_Symbol
         or else Nkind (New_N) in N_Op
       then
          if not Instantiating then
@@ -4478,9 +4465,9 @@ package body Sem_Ch12 is
               or else
                 not (Nkind (Ent) = N_Defining_Identifier
                        or else
-                     Nkind (Ent) = N_Defining_Character_Literal
-                       or else
-                     Nkind (Ent) = N_Defining_Operator_Symbol)
+                     Nkind (Ent) = N_Defining_Character_Literal)
+--                         or else
+--                       Nkind (Ent) = N_Defining_Operator_Symbol)
               or else No (Scope (Ent))
               or else Scope (Ent) = Current_Instantiated_Parent.Gen_Id
               or else (Scope_Depth (Scope (Ent)) >
@@ -6208,10 +6195,10 @@ package body Sem_Ch12 is
          Loc := Sloc (Actual);
          Set_Sloc (New_Spec, Loc);
 
-         if Nkind (Actual) = N_Operator_Symbol then
-            Find_Direct_Name (Actual);
+--           if Nkind (Actual) = N_Operator_Symbol then
+--              Find_Direct_Name (Actual);
 
-         elsif Nkind (Actual) = N_Explicit_Dereference then
+         if Nkind (Actual) = N_Explicit_Dereference then
             Analyze (Prefix (Actual));
 
          elsif Nkind (Actual) /= N_Attribute_Reference then
@@ -6239,13 +6226,13 @@ package body Sem_Ch12 is
          --  Actual is resolved at the point of instantiation. Create
          --  an identifier or operator with the same name as the formal.
 
-         if Nkind (Formal_Sub) = N_Defining_Operator_Symbol then
-            Nam := Make_Operator_Symbol (Loc,
-              Chars =>  Chars (Formal_Sub),
-              Strval => No_String);
-         else
+--           if Nkind (Formal_Sub) = N_Defining_Operator_Symbol then
+--              Nam := Make_Operator_Symbol (Loc,
+--                Chars =>  Chars (Formal_Sub),
+--                Strval => No_String);
+--           else
             Nam := Make_Identifier (Loc, Chars (Formal_Sub));
-         end if;
+--         end if;
 
       else
          Error_Msg_Sloc := Sloc (Scope (Analyzed_S));
@@ -6448,17 +6435,7 @@ package body Sem_Ch12 is
 
          Note_Possible_Modification (Actual);
 
-         --  Check for instantiation of atomic/volatile actual for
-         --  non-atomic/volatile formal (RM C.6 (12)).
-
-         if Is_Atomic_Object (Actual)
-           and then not Is_Atomic (Orig_Ftyp)
-         then
-            Error_Msg_N
-              ("cannot instantiate non-atomic formal object " &
-               "with atomic actual", Actual);
-
-         elsif Is_Volatile_Object (Actual)
+         if Is_Volatile_Object (Actual)
            and then not Is_Volatile (Orig_Ftyp)
          then
             Error_Msg_N
@@ -6981,16 +6958,10 @@ package body Sem_Ch12 is
                  Declarations               => Empty_List,
                  Handled_Statement_Sequence =>
                    Make_Handled_Sequence_Of_Statements (Loc,
-                     Statements =>
-                       New_List (
-                         Make_Raise_Program_Error (Loc,
-                           Reason =>
-                             PE_Access_Before_Elaboration))));
+                     Statements => Empty_List));
 
          else
-            Ret_Expr :=
-              Make_Raise_Program_Error (Loc,
-                Reason => PE_Access_Before_Elaboration);
+            Ret_Expr := Empty;
 
             Set_Etype (Ret_Expr, (Etype (Anon_Id)));
             Set_Analyzed (Ret_Expr);
@@ -7354,14 +7325,7 @@ package body Sem_Ch12 is
             Abandon_Instantiation (Actual);
          end if;
 
-         --  Perform atomic/volatile checks (RM C.6(12))
-
-         if Is_Atomic (Act_T) and then not Is_Atomic (Ancestor) then
-            Error_Msg_N
-              ("cannot have atomic actual type for non-atomic formal type",
-               Actual);
-
-         elsif Is_Volatile (Act_T)
+         if Is_Volatile (Act_T)
            and then not Is_Volatile (Ancestor)
            and then Is_By_Reference_Type (Ancestor)
          then
@@ -7961,8 +7925,8 @@ package body Sem_Ch12 is
                end if;
             end;
 
-         elsif Nkind (Act) /= N_Operator_Symbol then
-            Analyze (Act);
+--           elsif Nkind (Act) /= N_Operator_Symbol then
+--              Analyze (Act);
          end if;
 
          if Errs /= Serious_Errors_Detected then
@@ -8533,7 +8497,7 @@ package body Sem_Ch12 is
                Save_Global_Descendant (Union_Id (Prefix (N)));
                Save_Global_Descendant (Union_Id (Selector_Name (N)));
 
-            when N_Identifier | N_Character_Literal | N_Operator_Symbol =>
+            when N_Identifier | N_Character_Literal => --  | N_Operator_Symbol =>
                null;
 
             when others =>
@@ -8729,16 +8693,16 @@ package body Sem_Ch12 is
             null;
 
          elsif Nkind (N) = N_Character_Literal
-           or else Nkind (N) = N_Operator_Symbol
+--           or else Nkind (N) = N_Operator_Symbol
          then
             if Nkind (N) = Nkind (Get_Associated_Node (N)) then
                Reset_Entity (N);
 
-            elsif Nkind (N) = N_Operator_Symbol
-              and then Nkind (Get_Associated_Node (N)) = N_String_Literal
-            then
-               Change_Operator_Symbol_To_String_Literal (N);
-            end if;
+--              elsif Nkind (N) = N_Operator_Symbol
+--                and then Nkind (Get_Associated_Node (N)) = N_String_Literal
+--              then
+--                 Change_Operator_Symbol_To_String_Literal (N);
+              end if;
 
          elsif Nkind (N) in N_Op then
 
@@ -9092,27 +9056,20 @@ package body Sem_Ch12 is
       end loop;
 
       case Attr_Id is
-         when Attribute_Adjacent |  Attribute_Ceiling   | Attribute_Copy_Sign |
-              Attribute_Floor    |  Attribute_Fraction  | Attribute_Machine   |
+         when Attribute_Floor    |  Attribute_Fraction  |
               Attribute_Model    |  Attribute_Remainder | Attribute_Rounding  |
               Attribute_Unbiased_Rounding  =>
             OK := Is_Fun
                     and then Num_F = 1
                     and then Is_Floating_Point_Type (T);
 
-         when Attribute_Image    | Attribute_Pred       | Attribute_Succ |
+         when Attribute_Image    | Attribute_Succ |
               Attribute_Value    | Attribute_Wide_Image |
               Attribute_Wide_Value  =>
             OK := (Is_Fun and then Num_F = 1 and then Is_Scalar_Type (T));
 
          when Attribute_Max      |  Attribute_Min  =>
             OK := (Is_Fun and then Num_F = 2 and then Is_Scalar_Type (T));
-
-         when Attribute_Input =>
-            OK := (Is_Fun and then Num_F = 1);
-
-         when Attribute_Output | Attribute_Read | Attribute_Write =>
-            OK := (not Is_Fun and then Num_F = 2);
 
          when others =>
             OK := False;

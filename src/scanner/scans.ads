@@ -41,7 +41,8 @@ package Scans is
    --  this type declaration is *not* for a reserved word. For details on
    --  why there is this requirement, see Scn.Initialize_Scanner.
 
-   type Token_Type is (
+   type Token_Type is 
+     (
 
       --  Token name          Token type   Class(es)
 
@@ -52,8 +53,6 @@ package Scans is
       Tok_String_Literal,  -- string lit   Literal. Lit_Or_Name
 
       Tok_Char_Literal,    -- char lit     Name, Literal. Lit_Or_Name
-
-      Tok_Operator_Symbol, -- op symbol    Name, Literal, Lit_Or_Name, Desig
 
       Tok_Identifier,      -- identifer    Name, Lit_Or_Name, Desig
 
@@ -129,17 +128,21 @@ package Scans is
       Tok_Else,            -- ELSE         Eterm, Sterm, After_SM
       Tok_Elsif,           -- ELSIF        Eterm, Sterm, After_SM
       Tok_End,             -- END          Eterm, Sterm, After_SM
-      Tok_Exception,       -- EXCEPTION    Eterm, Sterm, After_SM
       Tok_Exit,            -- EXIT         Eterm, Sterm, After_SM
       Tok_Goto,            -- GOTO         Eterm, Sterm, After_SM
       Tok_If,              -- IF           Eterm, Sterm, After_SM
       Tok_Pragma,          -- PRAGMA       Eterm, Sterm, After_SM
-      Tok_Raise,           -- RAISE        Eterm, Sterm, After_SM
       Tok_Return,          -- RETURN       Eterm, Sterm, After_SM
       Tok_Terminate,       -- TERMINATE    Eterm, Sterm, After_SM
       Tok_Until,           -- UNTIL        Eterm, Sterm, After_SM
       Tok_When,            -- WHEN         Eterm, Sterm, After_SM
-
+		       
+      Tok_Wait,            -- WAIT         Eterm, Sterm, After_SM
+      Tok_Pause,           -- PAUSE        Eterm, Sterm, After_SM
+      Tok_Select,          -- SELECT       Eterm, Sterm, After_SM
+      Tok_Fork,            -- FORK         Eterm, Sterm, After_SM
+      Tok_Abort,           -- ABORT        Eterm, Sterm, After_SM
+		       
       Tok_Begin,           -- BEGIN        Eterm, Sterm, After_SM, Labeled_Stmt
       Tok_Declare,         -- DECLARE      Eterm, Sterm, After_SM, Labeled_Stmt
       Tok_For,             -- FOR          Eterm, Sterm, After_SM, Labeled_Stmt
@@ -167,7 +170,11 @@ package Scans is
       Tok_Vertical_Bar,    -- |            Cterm, Sterm, Chtok
 
       Tok_Dot_Dot,         -- ..           Sterm, Chtok
-
+      
+      Tok_Reactive,
+      Tok_Flow,
+      Tok_Reaction,
+	
       --  The following three entries are used only when scanning project
       --  files.
 
@@ -201,7 +208,7 @@ package Scans is
       --  Numeric literal
 
       subtype Token_Class_Literal is
-        Token_Type range Tok_Integer_Literal .. Tok_Operator_Symbol;
+        Token_Type range Tok_Integer_Literal .. Tok_Char_Literal;
       --  Literal
 
       subtype Token_Class_Lit_Or_Name is
@@ -234,7 +241,7 @@ package Scans is
       --    (identifier, char literal, operator symbol)
 
       subtype Token_Class_Desig is
-        Token_Type range Tok_Operator_Symbol .. Tok_Identifier;
+        Token_Type range Tok_Identifier .. Tok_Identifier;
       --  Token which can be a Designator (identifier, operator symbol)
 
       subtype Token_Class_Namext is

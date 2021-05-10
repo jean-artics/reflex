@@ -229,8 +229,8 @@ package body Uname is
             case Kind is
 
                when N_Identifier                      |
-                    N_Defining_Identifier             |
-                    N_Defining_Operator_Symbol        =>
+                    N_Defining_Identifier             =>
+--                    N_Defining_Operator_Symbol        =>
 
                   --  Note: it is of course an error to have a defining
                   --  operator symbol at this point, but this is not where

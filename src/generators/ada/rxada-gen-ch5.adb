@@ -342,12 +342,6 @@ package body Rxada.Gen.Ch5 is
          end loop;
       end if;
       
-      if not Is_Empty_List (Exception_Handlers (Node)) then
-	 Error_Msg_N
-	   ("??exception handlers are ignored",
-	    First (Exception_Handlers (Node)));
-      end if;
-      
       if Present (At_End_Proc (Node)) then
 	 Error_Msg_N
 	   ("clean up procedures not supported yet",

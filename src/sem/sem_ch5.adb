@@ -25,10 +25,8 @@ with Atree;    use Atree;
 with RxChecks; use RxChecks;
 with Einfo;    use Einfo;
 with Errout;   use Errout;
---  with Expander; use Expander;
 with Exp_Util; use Exp_Util;
 with Freeze;   use Freeze;
-with Lib.Xref; use Lib.Xref;
 with Nlists;   use Nlists;
 with Nmake;    use Nmake;
 with Opt;      use Opt;
@@ -459,8 +457,6 @@ package body Sem_Ch5 is
 
          else
             Set_Ekind (Ent, E_Block);
-            Generate_Reference (Ent, N, ' ');
-            Generate_Definition (Ent);
 
             if Nkind (Parent (Ent)) = N_Implicit_Label_Declaration then
                Set_Label_Construct (Parent (Ent), N);
@@ -491,25 +487,25 @@ package body Sem_Ch5 is
       --  Analyze exception handlers if present. Note that the test for
       --  HSS being present is an error defence against previous errors.
 
-      if Present (Handled_Statement_Sequence (N))
-        and then Present (Exception_Handlers (Handled_Statement_Sequence (N)))
-      then
-         declare
-            S : Entity_Id := Scope (Ent);
-
-         begin
-            --  Indicate that enclosing scopes contain a block with handlers.
-            --  Only non-generic scopes need to be marked.
-
-            loop
-               Set_Has_Nested_Block_With_Handler (S);
-               exit when Is_Overloadable (S)
-                 or else Ekind (S) = E_Package
-                 or else Is_Generic_Unit (S);
-               S := Scope (S);
-            end loop;
-         end;
-      end if;
+--        if Present (Handled_Statement_Sequence (N))
+--          and then Present (Exception_Handlers (Handled_Statement_Sequence (N)))
+--        then
+--           declare
+--              S : Entity_Id := Scope (Ent);
+--
+--           begin
+--              --  Indicate that enclosing scopes contain a block with handlers.
+--              --  Only non-generic scopes need to be marked.
+--
+--              loop
+--                 Set_Has_Nested_Block_With_Handler (S);
+--                 exit when Is_Overloadable (S)
+--                   or else Ekind (S) = E_Package
+--                   or else Is_Generic_Unit (S);
+--                 S := Scope (S);
+--              end loop;
+--           end;
+--        end if;
 
       Check_References (Ent);
       End_Scope;
@@ -1032,11 +1028,6 @@ package body Sem_Ch5 is
                begin
                   Enter_Name (Id);
 
-                  --  We always consider the loop variable to be referenced,
-                  --  since the loop may be used just for counting purposes.
-
-                  Generate_Reference (Id, N, ' ');
-
                   --  Check for case of loop variable hiding a local
                   --  variable (used later on to give a nice warning
                   --  if the hidden variable is never assigned).
@@ -1221,8 +1212,6 @@ package body Sem_Ch5 is
 
          Analyze (Id);
          Ent := Entity (Id);
-         Generate_Reference  (Ent, N, ' ');
-         Generate_Definition (Ent);
 
          --  If we found a label, mark its type. If not, ignore it, since it
          --  means we have a conflicting declaration, which would already have
@@ -1296,7 +1285,6 @@ package body Sem_Ch5 is
             --  If we found a label mark it as reachable.
 
             if Ekind (Lab) = E_Label then
-               Generate_Definition (Lab);
                Set_Reachable (Lab);
 
                if Nkind (Parent (Lab)) = N_Implicit_Label_Declaration then
@@ -1435,8 +1423,7 @@ package body Sem_Ch5 is
                --  follows a raise, then we allow it without a warning, since
                --  the Ada RM annoyingly requires a useless return here!
 
-               if Nkind (Original_Node (N)) /= N_Raise_Statement
-                 or else Nkind (Nxt) /= N_Return_Statement
+               if Nkind (Nxt) /= N_Return_Statement
                then
                   --  The rather strange shenanigans with the warning message
                   --  here reflects the fact that Kill_Dead_Code is very good
@@ -1510,5 +1497,214 @@ package body Sem_Ch5 is
          end;
       end if;
    end Check_Unreachable_Code;
+   
+   
+   ----------------------------
+   -- Analyze_Reactive_State --
+   ----------------------------
 
+   procedure Analyze_Reactive_State (N : Node_Id) is
+      State       : Node_Id;
+      Id          : Entity_Id;
+      Type_Id     : Entity_Id;
+      React_Type  : Node_Id;
+      States_List : List_Id;
+   begin
+      State := State_Identifier (N);
+
+      Id := Defining_Identifier (State);
+      Enter_Name (Id);
+      
+      Set_Ekind (Id, E_Reactive_State);
+      -- Set_Etype (Id, E_Reactive_State);
+      Set_Scope (Id, Current_Scope);
+      
+      --  Retreive the reactive type and add State to it
+      
+      Type_Id := Current_Reactive_Type (Id);
+      
+      React_Type := Parent (Type_Id);
+      
+      if Present (React_Type) then
+	 States_List := States (React_Type);
+	 if No (States_List) then
+	    States_List := New_List;
+	    Set_States (React_Type, States_List);
+	 end if;
+	 
+	 Append (State, States_List);
+	 
+      else
+	 Error_Msg ("cannot find reactive type", Sloc (N));
+      end if;
+      
+      Set_Analyzed (State);
+   end Analyze_Reactive_State;
+
+   --------------------------------------
+   -- Analyze_Reactive_Pause_Statement --
+   --------------------------------------
+
+   procedure Analyze_Reactive_Pause_Statement (N : Node_Id) is
+   begin
+      Analyze_Reactive_State (N);
+   end Analyze_Reactive_Pause_Statement;
+
+   -------------------------------------
+   -- Analyze_Reactive_Wait_Statement --
+   -------------------------------------
+
+   procedure Analyze_Reactive_Wait_Statement (N : Node_Id) is
+
+      Cond : constant Node_Id := Condition (N);
+   begin
+      Analyze_Reactive_State (N);
+
+      Analyze_And_Resolve (Cond, Any_Boolean);
+   end Analyze_Reactive_Wait_Statement;
+
+   ---------------------------------------
+   -- Analyze_Reactive_Select_Statement --
+   ---------------------------------------
+
+   procedure Analyze_Reactive_Select_Statement (N : Node_Id) is
+      
+      Alt : Node_Id;
+   begin
+      Analyze_Reactive_State (N);
+
+      --  Analyze all select alternatives conditions.
+
+      if Present (Alternatives (N)) then
+         Alt := First (Alternatives (N));
+         while Present (Alt) loop
+   	    Analyze_And_Resolve
+   	      (Condition (Alt), Any_Boolean);
+            Next (Alt);
+         end loop;
+      end if;
+
+      --  Analyze all select alternatives statements.
+
+      if Present (Alternatives (N)) then
+         Alt := First (Alternatives (N));
+         while Present (Alt) loop
+   	    Analyze_Statements (Statements (Alt));
+            Next (Alt);
+         end loop;
+      end if;
+   end Analyze_Reactive_Select_Statement;
+
+   -------------------------------------
+   -- Analyze_Reactive_Fork_Statement --
+   -------------------------------------
+
+   procedure Analyze_Reactive_Fork_Statement (N : Node_Id) is
+      Alt   : Node_Id;
+      Cond  : constant Node_Id := Condition (N);
+
+      procedure Analyze_Fork_Alternative (Anode : Node_Id);
+      --  This is applied to either the N_If_Statement node itself or
+      --  to an N_Elsif_Part node. It deals with analyzing the condition
+      --  and the THEN statements associated with it.
+
+      -----------------------
+      -- Analyze_Cond_Then --
+      -----------------------
+
+      procedure Analyze_Fork_Alternative (Anode : Node_Id) is
+         Stmts : constant List_Id := Statements (Anode);
+--     	 Pse   : Node_Id;
+--     	 Lst   : Node_Id;
+      begin
+   	 if Is_Non_Empty_List (Stmts) then
+   	    Analyze_Statements (Stmts);
+   	 else
+   	    Error_Msg_N
+   	      ("a fork branch cannot be empty", Anode);
+   	 end if;
+   	 --  Lst := Last (Stmts);
+   	 --  Pse := Lst;
+   	 --  while Present (Pse) loop
+   	 --     exit when Is_Waiting_Statement (Pse);
+   	 --     Prev (Pse);
+   	 --  end loop;
+
+   	 --  if No (Pse) then
+   	 --     Error_Msg_N
+   	 --       ("a fork branch must have at least one waiting statement",
+   	 --        Anode);
+   	 --  else
+   	 --     null;
+   	 --     --  if Nkind (Pse) /= N_Reactive_Pause_Statement then
+   	 --     --     Error_Msg_N
+   	 --     --  	 ("last waiting statement of a fork branch must be " &
+   	 --     --  	    "a PAUSE statement",
+   	 --     --  	  Pse);
+
+   	 --     --  elsif Pse /= Lst then
+   	 --     --     Error_Msg_N
+   	 --     --  	 ("code after the pause statement is never reached",
+   	 --     --     Pse);
+   	 --     --  end if;
+   	 --  end if;
+      end Analyze_Fork_Alternative;
+
+      --  Start of Analyze_If_Statement
+
+   begin
+      
+      Analyze_Reactive_State (N);
+      
+      --  Analyze all select alternatives.
+
+      if Present (Alternatives (N)) then
+         Alt := First (Alternatives (N));
+         while Present (Alt) loop
+            Analyze_Fork_Alternative (Alt);
+            Next (Alt);
+         end loop;
+      end if;
+      
+      if Present (Cond) then
+   	 Analyze_And_Resolve (Cond, Any_Boolean);
+      else
+   	 null;
+      end if;
+
+   end Analyze_Reactive_Fork_Statement;
+
+   --  --------------------------------------
+   --  -- Analyze_Reactive_Abort_Statement --
+   --  --------------------------------------
+
+   --  procedure Analyze_Reactive_Abort_Statement (N : Node_Id) is
+   --     Abort_Stmts   : List_Id;
+   --     Handler       : Node_Id;
+   --     Handler_Stmts : List_Id;
+   --     Cond          : constant Node_Id := Condition (N);
+
+   --  begin
+   --     --  Annalyze the abort body statements.
+
+   --     Abort_Stmts := Statements (N);
+   --     Analyze_Statements (Abort_Stmts);
+
+   --     --  Analyze the abort condtion.
+
+   --     Analyze_And_Resolve (Cond, Any_Boolean);
+
+   --     Mark_Waiting_Statement (N);
+
+   --     --  Analyze abort Handler if any.
+
+   --     if Is_Non_Empty_List (Abort_Handlers (N)) then
+   --  	 Handler := First (Abort_Handlers (N));
+
+   --  	 Handler_Stmts := Statements (Handler);
+   --  	 Analyze_Statements (Handler_Stmts);
+   --     end if;
+   --  end Analyze_Reactive_Abort_Statement;
+
+   
 end Sem_Ch5;

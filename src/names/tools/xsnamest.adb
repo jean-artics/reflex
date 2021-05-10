@@ -48,11 +48,9 @@ procedure XSnamesT is
 
    InS  : Ada.Text_IO.File_Type;
    InB  : Ada.Text_IO.File_Type;
-   InH  : Ada.Text_IO.File_Type;
 
    OutS : Ada.Streams.Stream_IO.File_Type;
    OutB : Ada.Streams.Stream_IO.File_Type;
-   OutH : Ada.Streams.Stream_IO.File_Type;
 
    A, B  : VString := Nul;
    Line  : VString := Nul;
@@ -150,23 +148,6 @@ procedure XSnamesT is
             In_Pat : Boolean := False;
 
          begin
-            if Header_Current_Symbol /= None then
-               Put_Line (OutH, Header_Pending_Line);
-            end if;
-
-            loop
-               Line := Get_Line (InH);
-
-               if Match (Line, Pat) then
-                  In_Pat := True;
-               elsif In_Pat then
-                  Header_Pending_Line := Line;
-                  exit;
-               else
-                  Put_Line (OutH, Line);
-               end if;
-            end loop;
-
             Header_Current_Symbol := S;
          end;
       end if;
@@ -177,10 +158,6 @@ procedure XSnamesT is
       --  parens, otherwise the parenthesized value gets treated as an argument
       --  specification.
 
-      Put_Line (OutH, "#define  " & Header_Prefix (S).all
-                  & "_" & Name1
-                  & (30 - Natural'Min (29, Length (Name1))) * ' '
-                  & Make_Value (Header_Counter (S)));
       Header_Counter (S) := Header_Counter (S) + 1;
    end Output_Header_Line;
 
@@ -189,7 +166,6 @@ procedure XSnamesT is
 begin
    Open (InS, In_File, "snames.ads-tmpl");
    Open (InB, In_File, "snames.adb-tmpl");
-   Open (InH, In_File, "snames.h-tmpl");
 
    --  Note that we do not generate snames.{ads,adb,h} directly. Instead
    --  we output them to snames.n{s,b,h} so that Makefiles can use
@@ -198,11 +174,6 @@ begin
 
    Create (OutS, Out_File, "snames.ns");
    Create (OutB, Out_File, "snames.nb");
-   Create (OutH, Out_File, "snames.nh");
-
-   Put_Line (OutH, "#ifdef __cplusplus");
-   Put_Line (OutH, "extern ""C"" {");
-   Put_Line (OutH, "#endif");
 
    Anchored_Mode := True;
    Val := 0;
@@ -276,13 +247,4 @@ begin
       Put_Line (OutB, Line);
    end loop;
 
-   Put_Line (OutH, Header_Pending_Line);
-   while not End_Of_File (InH) loop
-      Line := Get_Line (InH);
-      Put_Line (OutH, Line);
-   end loop;
-
-   Put_Line (OutH, "#ifdef __cplusplus");
-   Put_Line (OutH, "}");
-   Put_Line (OutH, "#endif");
 end XSnamesT;

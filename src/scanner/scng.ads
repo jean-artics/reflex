@@ -26,7 +26,7 @@
 --  such as project files. It is instantiated in Scn and Prj.Err.
 
 with Casing; use Casing;
-with Styleg;
+--with Styleg;
 with Types;  use Types;
 
 generic
@@ -46,10 +46,6 @@ generic
 
    with procedure Error_Msg_SP (Msg : String);
    --  Output a message at the start of the previous token
-
-   with package Style is new Styleg
-     (Error_Msg, Error_Msg_S, Error_Msg_SC, Error_Msg_SP);
-   --  Instantiation of Styleg with the same error reporting routines
 
 package Scng is
 

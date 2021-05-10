@@ -183,8 +183,6 @@ package body Rxada.Gen.Ch2 is
       Ob      : Output_Buffer := This.Get_Output_Buffer;
       E       : Entity_Id;
       Te      : Entity_Id;
-      Orig_E  : Entity_Id;
-      Orig_Te : Entity_Id;
    begin
       E  := Entity (Node);
       

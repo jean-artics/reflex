@@ -80,12 +80,6 @@ package Sem_Util is
    --  place error message on node N. Used in  object declarations, type
    --  conversions, qualified expressions.
 
-   procedure Check_VMS (Construct : Node_Id);
-   --  Check that this the target is OpenVMS, and if so, return with
-   --  no effect, otherwise post an error noting this can only be used
-   --  with OpenVMS ports. The argument is the construct in question
-   --  and is used to post the error message.
-
    function Collect_Primitive_Operations (T : Entity_Id) return Elist_Id;
    --  Called upon type derivation and extension. We scan the declarative
    --  part in  which the type appears, and collect subprograms that have
@@ -162,8 +156,6 @@ package Sem_Util is
    --  Returns the entity of the package or subprogram enclosing E, if any.
    --  Returns Empty if no enclosing package or subprogram.
 
-
-
    function Enclosing_Generic_Body
      (E : Entity_Id) return Node_Id;
    --  Returns the Node_Id associated with the innermost enclosing
@@ -193,12 +185,6 @@ package Sem_Util is
    --  duplications (error message is issued if a conflict is found)
    --  Note: Enter_Name is not used for overloadable entities, instead
    --  these are entered using Sem_Ch6.Enter_Overloadable_Entity.
-
-   procedure Explain_Limited_Type (T : Entity_Id; N : Node_Id);
-   --  This procedure is called after issuing a message complaining
-   --  about an inappropriate use of limited type T. If useful, it
-   --  adds additional continuation lines to the message explaining
-   --  why type T is limited. Messages are placed at node N.
 
    function First_Actual (Node : Node_Id) return Node_Id;
    --  Node is an N_Function_Call or N_Procedure_Call_Statement node. The
@@ -380,7 +366,7 @@ package Sem_Util is
    --  Determine if Obj is an aliased view, i.e. the name of an
    --  object to which 'Access or 'Unchecked_Access can apply.
 
-   function Is_Atomic_Object (N : Node_Id) return Boolean;
+--   function Is_Atomic_Object (N : Node_Id) return Boolean;
    --  Determines if the given node denotes an atomic object in the sense
    --  of the legality checks described in RM C.6(12).
 
@@ -724,11 +710,6 @@ package Sem_Util is
    --  Establish the entity E as the currently visible definition of its
    --  associated name (i.e. the Node_Id associated with its name)
 
-   procedure Set_Entity_With_Style_Check (N : Node_Id; Val : Entity_Id);
-   --  This procedure has the same calling sequence as Set_Entity, but
-   --  if Style_Check is set, then it calls a style checking routine which
-   --  can check identifier spelling style.
-
    procedure Set_Name_Entity_Id (Id : Name_Id; Val : Entity_Id);
    --  Sets the Entity_Id value associated with the given name, which is the
    --  Id of the innermost visible entity with the given name. See the body
@@ -829,7 +810,11 @@ package Sem_Util is
    --  Replicate a function or a procedure specification denoted by Spec. The
    --  resulting tree is an exact duplicate of the original tree. New entities
    --  are created for the unit name and the formal parameters.
-
+   
+   function Current_Reactive_Type (State : Node_Id) return Entity_Id;
+   --  State is a state of a reactive procedure, retreive the corresponding
+   --  reactive type
+   
 private
    pragma Inline (Current_Entity);
    pragma Inline (Get_Name_Entity_Id);

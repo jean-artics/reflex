@@ -21,6 +21,8 @@
 --                                                                          --
 ------------------------------------------------------------------------------
 
+with Ada.Text_Io; use Ada.Text_Io;
+
 with Atree;    use Atree;
 with Casing;   use Casing;
 --with Checks;   use Checks;
@@ -32,7 +34,7 @@ with Exp_Util; use Exp_Util;
 with Fname;    use Fname;
 with Freeze;   use Freeze;
 with Lib;      use Lib;
-with Lib.Xref; use Lib.Xref;
+--with Lib.Xref; use Lib.Xref;
 with Namet;    use Namet;
 with Nlists;   use Nlists;
 with Nmake;    use Nmake;
@@ -50,7 +52,7 @@ with Sinfo;    use Sinfo;
 with Sinput;   use Sinput;
 with Snames;   use Snames;
 with Stand;    use Stand;
-with Style;
+--with Style;
 with Stringt;  use Stringt;
 with Targparm; use Targparm;
 with Tbuild;   use Tbuild;
@@ -166,9 +168,6 @@ package body Sem_Util is
       --  Now we replace the node by an N_Raise_Constraint_Error node
       --  This does not need reanalyzing, so set it as analyzed now.
 
-      Rewrite (N,
-        Make_Raise_Constraint_Error (Sloc (N),
-          Reason => Reason));
       Set_Analyzed (N, True);
       Set_Etype (N, Rtyp);
       Set_Raises_Constraint_Error (N);
@@ -628,18 +627,6 @@ package body Sem_Util is
       end if;
    end Check_Fully_Declared;
 
-   ---------------
-   -- Check_VMS --
-   ---------------
-
-   procedure Check_VMS (Construct : Node_Id) is
-   begin
-      if not OpenVMS_On_Target then
-         Error_Msg_N
-           ("this construct is allowed only in Open'V'M'S", Construct);
-      end if;
-   end Check_VMS;
-
    ----------------------------------
    -- Collect_Primitive_Operations --
    ----------------------------------
@@ -1008,8 +995,6 @@ package body Sem_Util is
          when
            N_Component_Declaration                  |
            N_Defining_Program_Unit_Name             |
-           N_Exception_Declaration                  |
-           N_Exception_Renaming_Declaration         |
            N_Formal_Object_Declaration              |
            N_Formal_Package_Declaration             |
            N_Formal_Type_Declaration                |
@@ -1416,7 +1401,7 @@ package body Sem_Util is
       S : constant Entity_Id := Current_Scope;
 
    begin
-      Generate_Definition (Def_Id);
+--      Generate_Definition (Def_Id);
 
       --  Add new name to current scope declarations. Check for duplicate
       --  declaration, which may or may not be a genuine error.
@@ -1650,7 +1635,7 @@ package body Sem_Util is
          Set_Is_Immediately_Visible (Def_Id);
          Set_Current_Entity         (Def_Id);
       end if;
-
+      
       Set_Homonym       (Def_Id, C);
       Append_Entity     (Def_Id, S);
       Set_Public_Status (Def_Id);
@@ -1668,29 +1653,6 @@ package body Sem_Util is
          Error_Msg_N ("declaration hides &#?", Def_Id);
       end if;
    end Enter_Name;
-
-   --------------------------
-   -- Explain_Limited_Type --
-   --------------------------
-
-   procedure Explain_Limited_Type (T : Entity_Id; N : Node_Id) is
-   begin
-      --  For array, component type must be limited
-
-      if Is_Array_Type (T) then
-         Error_Msg_Node_2 := T;
-         Error_Msg_NE
-           ("component type& of type& is limited", N, Component_Type (T));
-         Explain_Limited_Type (Component_Type (T), N);
-
-      elsif Is_Record_Type (T) then
-
-         --  It's odd if the loop falls through, but this is only an extra
-         --  error message, so we just let it go and ignore the situation.
-
-         return;
-      end if;
-   end Explain_Limited_Type;
 
    -----------------------------
    -- Find_Static_Alternative --
@@ -2585,64 +2547,64 @@ package body Sem_Util is
    -- Is_Atomic_Object --
    ----------------------
 
-   function Is_Atomic_Object (N : Node_Id) return Boolean is
+--     function Is_Atomic_Object (N : Node_Id) return Boolean is
+--
+--        function Object_Has_Atomic_Components (N : Node_Id) return Boolean;
+--        --  Determines if given object has atomic components
+--
+--        function Is_Atomic_Prefix (N : Node_Id) return Boolean;
+--        --  If prefix is an implicit dereference, examine designated type.
+--
+--        function Is_Atomic_Prefix (N : Node_Id) return Boolean is
+--        begin
+--           if Is_Access_Type (Etype (N)) then
+--              return
+--                Has_Atomic_Components (Designated_Type (Etype (N)));
+--           else
+--              return Object_Has_Atomic_Components (N);
+--           end if;
+--        end Is_Atomic_Prefix;
 
-      function Object_Has_Atomic_Components (N : Node_Id) return Boolean;
-      --  Determines if given object has atomic components
-
-      function Is_Atomic_Prefix (N : Node_Id) return Boolean;
-      --  If prefix is an implicit dereference, examine designated type.
-
-      function Is_Atomic_Prefix (N : Node_Id) return Boolean is
-      begin
-         if Is_Access_Type (Etype (N)) then
-            return
-              Has_Atomic_Components (Designated_Type (Etype (N)));
-         else
-            return Object_Has_Atomic_Components (N);
-         end if;
-      end Is_Atomic_Prefix;
-
-      function Object_Has_Atomic_Components (N : Node_Id) return Boolean is
-      begin
-         if Has_Atomic_Components (Etype (N))
-           or else Is_Atomic (Etype (N))
-         then
-            return True;
-
-         elsif Is_Entity_Name (N)
-           and then (Has_Atomic_Components (Entity (N))
-                      or else Is_Atomic (Entity (N)))
-         then
-            return True;
-
-         elsif Nkind (N) = N_Indexed_Component
-           or else Nkind (N) = N_Selected_Component
-         then
-            return Is_Atomic_Prefix (Prefix (N));
-
-         else
-            return False;
-         end if;
-      end Object_Has_Atomic_Components;
+--        function Object_Has_Atomic_Components (N : Node_Id) return Boolean is
+--        begin
+--           if Has_Atomic_Components (Etype (N))
+--             or else Is_Atomic (Etype (N))
+--           then
+--              return True;
+--
+--           elsif Is_Entity_Name (N)
+--             and then (Has_Atomic_Components (Entity (N))
+--                        or else Is_Atomic (Entity (N)))
+--           then
+--              return True;
+--
+--           elsif Nkind (N) = N_Indexed_Component
+--             or else Nkind (N) = N_Selected_Component
+--           then
+--              return Is_Atomic_Prefix (Prefix (N));
+--
+--           else
+--              return False;
+--           end if;
+--        end Object_Has_Atomic_Components;
 
    --  Start of processing for Is_Atomic_Object
 
-   begin
-      if Is_Atomic (Etype (N))
-        or else (Is_Entity_Name (N) and then Is_Atomic (Entity (N)))
-      then
-         return True;
-
-      elsif Nkind (N) = N_Indexed_Component
-        or else Nkind (N) = N_Selected_Component
-      then
-         return Is_Atomic_Prefix (Prefix (N));
-
-      else
-         return False;
-      end if;
-   end Is_Atomic_Object;
+--     begin
+--        if Is_Atomic (Etype (N))
+--          or else (Is_Entity_Name (N) and then Is_Atomic (Entity (N)))
+--        then
+--           return True;
+--
+--        elsif Nkind (N) = N_Indexed_Component
+--          or else Nkind (N) = N_Selected_Component
+--        then
+--           return Is_Atomic_Prefix (Prefix (N));
+--
+--        else
+--           return False;
+--        end if;
+--     end Is_Atomic_Object;
 
    ----------------------------------------------
    -- Is_Dependent_Component_Of_Mutable_Object --
@@ -3059,11 +3021,6 @@ package body Sem_Util is
             when N_Function_Call =>
                return True;
 
-            --  A reference to the stream attribute Input is a function call
-
-            when N_Attribute_Reference =>
-               return Attribute_Name (N) = Name_Input;
-
             when N_Selected_Component =>
                return Is_Object_Reference (Selector_Name (N));
 
@@ -3360,12 +3317,10 @@ package body Sem_Util is
       if Kind = N_Return_Statement
            or else
          Kind = N_Goto_Statement
-           or else
-         Kind = N_Raise_Statement
       then
          return True;
 
-      elsif (Kind = N_Exit_Statement or else Kind in N_Raise_xxx_Error)
+      elsif Kind = N_Exit_Statement
         and then No (Condition (N))
       then
          return True;
@@ -3375,9 +3330,6 @@ package body Sem_Util is
         and then Present (Entity (Name (N)))
         and then No_Return (Entity (Name (N)))
       then
-         return True;
-
-      elsif Nkind (Original_Node (N)) = N_Raise_Statement then
          return True;
 
       else
@@ -3455,8 +3407,7 @@ package body Sem_Util is
             K : constant Entity_Kind := Ekind (E);
 
          begin
-            return (K = E_Variable
-                      and then Nkind (Parent (E)) /= N_Exception_Handler)
+            return K = E_Variable
               or else  K = E_Component
               or else  K = E_Out_Parameter
               or else  K = E_In_Out_Parameter
@@ -5021,7 +4972,7 @@ null;            end if;
 
             Set_Is_True_Constant    (E, False);
             Set_Current_Value       (E, Empty);
-            Generate_Reference      (E, N, 'm');
+--            Generate_Reference      (E, N, 'm');
             -- Kill_Checks             (E);
 
             if not Can_Never_Be_Null (E) then
@@ -5295,9 +5246,8 @@ null;            end if;
                --  come from source (the caller already generated the
                --  appropriate Typ for this situation).
 
-               Generate_Reference
-                 (Parent_Ent, N, 'r', Set_Ref => False, Force => True);
-               Style.Check_Identifier (N, Parent_Ent);
+--                 Generate_Reference
+--                   (Parent_Ent, N, 'r', Set_Ref => False, Force => True);
                return;
             end if;
 
@@ -5402,12 +5352,9 @@ null;            end if;
          --  If a label reference is required, then do the style check
          --  and generate an l-type cross-reference entry for the label
 
-         if Label_Ref then
-            if Style_Check then
-               Style.Check_Identifier (Endl, Ent);
-            end if;
-            Generate_Reference (Ent, Endl, 'l', Set_Ref => False);
-         end if;
+--           if Label_Ref then
+--              Generate_Reference (Ent, Endl, 'l', Set_Ref => False);
+--           end if;
 
          --  Set the location to point past the label (normally this will
          --  mean the semicolon immediately following the label). This is
@@ -5419,7 +5366,7 @@ null;            end if;
 
       --  Now generate the e/t reference
 
-      Generate_Reference (Ent, Endl, Typ, Set_Ref => False, Force => True);
+--      Generate_Reference (Ent, Endl, Typ, Set_Ref => False, Force => True);
 
       --  Restore Sloc, in case modified above, since we have an identifier
       --  and the normal Sloc should be left set in the tree.
@@ -5646,8 +5593,6 @@ null;            end if;
             if Nkind (P) = N_If_Statement
                  or else
                Nkind (P) = N_Case_Statement
-                 or else
-               Nkind (P) = N_Exception_Handler
             then
                return False;
             else
@@ -5844,59 +5789,6 @@ null;            end if;
    begin
       Set_Name_Entity_Id (Chars (E), E);
    end Set_Current_Entity;
-
-   ---------------------------------
-   -- Set_Entity_With_Style_Check --
-   ---------------------------------
-
-   procedure Set_Entity_With_Style_Check (N : Node_Id; Val : Entity_Id) is
-      Val_Actual : Entity_Id;
-      Nod        : Node_Id;
-
-   begin
-      Set_Entity (N, Val);
-
-      if Style_Check
-        and then not Suppress_Style_Checks (Val)
-        and then not In_Instance
-      then
-         if Nkind (N) = N_Identifier then
-            Nod := N;
-
-         elsif Nkind (N) = N_Expanded_Name then
-            Nod := Selector_Name (N);
-
-         else
-            return;
-         end if;
-
-         Val_Actual := Val;
-
-         --  A special situation arises for derived operations, where we want
-         --  to do the check against the parent (since the Sloc of the derived
-         --  operation points to the derived type declaration itself).
-
-         while not Comes_From_Source (Val_Actual)
-           and then Nkind (Val_Actual) in N_Entity
-           and then (Ekind (Val_Actual) = E_Enumeration_Literal
-                      or else Is_Subprogram (Val_Actual)
-                      or else Is_Generic_Subprogram (Val_Actual))
-           and then Present (Alias (Val_Actual))
-         loop
-            Val_Actual := Alias (Val_Actual);
-         end loop;
-
-         --  Renaming declarations for generic actuals do not come from source,
-         --  and have a different name from that of the entity they rename, so
-         --  there is no style check to perform here.
-
-         if Chars (Nod) = Chars (Val_Actual) then
-            Style.Check_Identifier (Nod, Val_Actual);
-         end if;
-      end if;
-
-      Set_Entity (N, Val);
-   end Set_Entity_With_Style_Check;
 
    ------------------------
    -- Set_Name_Entity_Id --
@@ -6615,5 +6507,30 @@ null;            end if;
 
       return Result;
    end Copy_Subprogram_Spec;
-
+   
+   ---------------------------
+   -- Current_Reactive_Type --
+   ---------------------------
+   
+   function Current_Reactive_Type (State : Node_Id) return Entity_Id is
+      
+      Subp       : Entity_Id;
+      Formal     : Entity_Id;
+      React_Type : Entity_Id;
+   begin
+      Subp := Enclosing_Subprogram (State);
+      
+      if Is_Reactive (Subp) then
+	 Formal := First_Formal (Subp);
+	 if Present (Formal) then
+	    React_Type := Etype (Formal);
+	    if Ekind (React_Type) = E_Reactive_Type then
+	       return React_Type;
+	    end if;
+	 end if;
+      end if;
+      
+      return Empty;
+   end Current_Reactive_Type;
+   
 end Sem_Util;

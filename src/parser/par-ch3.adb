@@ -21,8 +21,6 @@
 --                                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Text_IO; use Ada.Text_IO;
-
 with Sinfo.CN; use Sinfo.CN;
 
 separate (Par)
@@ -308,13 +306,6 @@ package body Ch3 is
          end;
       end if;
 
-      --  Check for misuse of Ada 95 keyword abstract in Ada 83 mode
-
-      if Token_Name = Name_Abstract then
-         Check_95_Keyword (Tok_Abstract, Tok_Tagged);
-         Check_95_Keyword (Tok_Abstract, Tok_New);
-      end if;
-
       --  Check cases of misuse of ABSTRACT
 
       if Token = Tok_Abstract then
@@ -332,13 +323,6 @@ package body Ch3 is
       else
          Abstract_Present := False;
          Abstract_Loc     := No_Location;
-      end if;
-
-      --  Check for misuse of Ada 95 keyword Tagged
-
-      if Token_Name = Name_Tagged then
-         Check_95_Keyword (Tok_Tagged, Tok_Private);
-         Check_95_Keyword (Tok_Tagged, Tok_Record);
       end if;
 
       --  Special check for misuse of Aliased
@@ -366,17 +350,12 @@ package body Ch3 is
 
             when Tok_Access =>
                Typedef_Node := P_Access_Type_Definition;
-               TF_Semicolon;
+--               TF_Semicolon;
                exit;
 
             when Tok_Array =>
                Typedef_Node := P_Array_Type_Definition;
-               TF_Semicolon;
-               exit;
-
-            when Tok_Digits =>
-               Typedef_Node := P_Floating_Point_Definition;
-               TF_Semicolon;
+--               TF_Semicolon;
                exit;
 
             when Tok_In =>
@@ -385,12 +364,12 @@ package body Ch3 is
             when Tok_Integer_Literal =>
                T_Range;
                Typedef_Node := P_Signed_Integer_Type_Definition;
-               TF_Semicolon;
+--               TF_Semicolon;
                exit;
 
             when Tok_Null =>
                Typedef_Node := P_Record_Definition;
-               TF_Semicolon;
+--               TF_Semicolon;
                exit;
 
             when Tok_Left_Paren =>
@@ -402,12 +381,12 @@ package body Ch3 is
                Set_Comes_From_Source (End_Labl, False);
 
                Set_End_Label (Typedef_Node, End_Labl);
-               TF_Semicolon;
+--               TF_Semicolon;
                exit;
 
             when Tok_Mod =>
                Typedef_Node := P_Modular_Type_Definition;
-               TF_Semicolon;
+--               TF_Semicolon;
                exit;
 
             when Tok_New =>
@@ -425,12 +404,12 @@ package body Ch3 is
                     (Record_Extension_Part (Typedef_Node), End_Labl);
                end if;
 
-               TF_Semicolon;
+--               TF_Semicolon;
                exit;
 
             when Tok_Range =>
                Typedef_Node := P_Signed_Integer_Type_Definition;
-               TF_Semicolon;
+--               TF_Semicolon;
                exit;
 
             when Tok_Record =>
@@ -442,7 +421,7 @@ package body Ch3 is
                Set_Comes_From_Source (End_Labl, False);
 
                Set_End_Label (Typedef_Node, End_Labl);
-               TF_Semicolon;
+--               TF_Semicolon;
                exit;
 
             when Tok_Tagged =>
@@ -477,13 +456,13 @@ package body Ch3 is
                      Set_End_Label (Typedef_Node, End_Labl);
                   end if;
 
-               TF_Semicolon;
+--               TF_Semicolon;
                exit;
 
             when Tok_Private =>
                Decl_Node := New_Node (N_Private_Type_Declaration, Type_Loc);
                Scan; -- past PRIVATE
-               TF_Semicolon;
+--               TF_Semicolon;
                exit;
 
             --  Here we have an identifier after the IS, which is certainly
@@ -498,7 +477,7 @@ package body Ch3 is
 
                if not Token_Is_At_Start_Of_Line then
                   Typedef_Node := P_Derived_Type_Def_Or_Private_Ext_Decl;
-                  TF_Semicolon;
+--                  TF_Semicolon;
 
                --  If the identifier is at the start of the line, and is in the
                --  same column as the type declaration itself then we consider
@@ -519,21 +498,22 @@ package body Ch3 is
 
                else
                   Typedef_Node := P_Record_Definition;
-                  TF_Semicolon;
+--                  TF_Semicolon;
                end if;
 
                exit;
 
-            --  Anything else is an error
+	    when Tok_Reactive =>
+	       Typedef_Node := P_Reactive_Type_Definition;
+--               TF_Semicolon;
+               exit;
+
+	       --  Anything else is an error
 
             when others =>
                if Bad_Spelling_Of (Tok_Access)
                     or else
                   Bad_Spelling_Of (Tok_Array)
-                    or else
-                  Bad_Spelling_Of (Tok_Delta)
-                    or else
-                  Bad_Spelling_Of (Tok_Digits)
                     or else
                   Bad_Spelling_Of (Tok_Private)
                     or else
@@ -594,6 +574,7 @@ package body Ch3 is
       --  Remaining processing is common for all three cases
 
       Set_Defining_Identifier (Decl_Node, Ident_Node);
+      P_Aspect_Specifications (Decl_Node);
       return Decl_Node;
    end P_Type_Declaration;
 
@@ -635,7 +616,8 @@ package body Ch3 is
       end if;
 
       Set_Subtype_Indication (Decl_Node, P_Subtype_Indication);
-      TF_Semicolon;
+      P_Aspect_Specifications (Decl_Node);
+--??JMA??      TF_Semicolon;
       return Decl_Node;
    end P_Subtype_Declaration;
 
@@ -651,7 +633,7 @@ package body Ch3 is
       Type_Node : Node_Id;
 
    begin
-      if Token = Tok_Identifier or else Token = Tok_Operator_Symbol then
+      if Token = Tok_Identifier then
          Type_Node := P_Subtype_Mark;
          return P_Subtype_Indication (Type_Node);
 
@@ -1094,14 +1076,6 @@ package body Ch3 is
       Ident := 1;
       Ident_Loop : loop
 
-         --  Check for some cases of misused Ada 95 keywords
-
-         if Token_Name = Name_Aliased then
-            Check_95_Keyword (Tok_Aliased, Tok_Array);
-            Check_95_Keyword (Tok_Aliased, Tok_Identifier);
-            Check_95_Keyword (Tok_Aliased, Tok_Constant);
-         end if;
-
          --  Constant cases
 
          if Token = Tok_Constant then
@@ -1121,11 +1095,6 @@ package body Ch3 is
             else
                Decl_Node := New_Node (N_Object_Declaration, Ident_Sloc);
                Set_Constant_Present (Decl_Node, True);
-
-               if Token_Name = Name_Aliased then
-                  Check_95_Keyword (Tok_Aliased, Tok_Array);
-                  Check_95_Keyword (Tok_Aliased, Tok_Identifier);
-               end if;
 
                if Token = Tok_Aliased then
                   Error_Msg_SC ("ALIASED should be before CONSTANT");
@@ -1147,21 +1116,6 @@ package body Ch3 is
                   Scan; -- Past renames
                   Discard_Junk_Node (P_Name);
                end if;
-            end if;
-
-         --  Exception cases
-
-         elsif Token = Tok_Exception then
-            Scan; -- past EXCEPTION
-
-            if Token_Is_Renames then
-               No_List;
-               Decl_Node :=
-                 New_Node (N_Exception_Renaming_Declaration, Ident_Sloc);
-               Set_Name (Decl_Node, P_Qualified_Simple_Name_Resync);
-               No_Constraint;
-            else
-               Decl_Node := New_Node (N_Exception_Declaration, Prev_Token_Ptr);
             end if;
 
          --  Aliased case (note that an object definition is required)
@@ -1235,8 +1189,27 @@ package body Ch3 is
             end if;
          end if;
 
-         TF_Semicolon;
          Set_Defining_Identifier (Decl_Node, Idents (Ident));
+         P_Aspect_Specifications (Decl_Node, Semicolon => False);
+
+         --  Allow initialization expression to follow aspects (note that in
+         --  this case P_Aspect_Specifications already issued an error msg).
+
+         if Token = Tok_Colon_Equal then
+            if Is_Non_Empty_List (Aspect_Specifications (Decl_Node)) then
+               Error_Msg
+                 ("aspect specifications must come after initialization "
+                  & "expression",
+                  Sloc (First (Aspect_Specifications (Decl_Node))));
+            end if;
+
+            Set_Expression (Decl_Node, Init_Expr_Opt);
+            --------Set_Has_Init_Expression (Decl_Node);
+         end if;
+
+         --  Now scan out the semicolon, which we deferred above
+
+         TF_Semicolon;
 
          if List_OK then
             if Ident < Num_Idents then
@@ -1332,7 +1305,16 @@ package body Ch3 is
       --  missing in the case of "type X is new Y record ..." or in the
       --  case of "type X is new Y null record".
 
-      if Token = Tok_With
+      --  First make sure we don't have an aspect specification. If we do
+      --  return now, so that our caller can check it (the WITH here is not
+      --  part of a type extension).
+
+      if Aspect_Specifications_Present then
+         return Typedef_Node;
+
+      --  OK, not an aspect specification, so continue test for extension
+
+      elsif Token = Tok_With
         or else Token = Tok_Record
         or else Token = Tok_Null
       then
@@ -1483,14 +1465,6 @@ package body Ch3 is
             Error_Msg_SC
               ("range constraint not allowed in membership test");
             Scan; -- past RANGE
-            raise Error_Resync;
-
-         --  Check for error of DIGITS or DELTA after a subtype mark
-
-         elsif Token = Tok_Digits or else Token = Tok_Delta then
-            Error_Msg_SC
-               ("accuracy definition not allowed in membership test");
-            Scan; -- past DIGITS or DELTA
             raise Error_Resync;
 
          elsif Token = Tok_Apostrophe then
@@ -2186,6 +2160,15 @@ package body Ch3 is
       return Discr_Node;
    end P_Discriminant_Association;
 
+   ---------------------------
+   -- P_Reactive_Definition --
+   ---------------------------
+
+   function P_Reactive_Definition return Node_Id is
+   begin
+      return New_Node (N_Reactive_Type, Token_Ptr);
+   end P_Reactive_Definition;
+
    ---------------------------------
    -- 3.8  Record Type Definition --
    ---------------------------------
@@ -2417,10 +2400,6 @@ package body Ch3 is
 
             CompDef_Node := New_Node (N_Component_Definition, Token_Ptr);
 
-            if Token_Name = Name_Aliased then
-               Check_95_Keyword (Tok_Aliased, Tok_Identifier);
-            end if;
-
             if Token = Tok_Aliased then
                Scan; -- past ALIASED
                Set_Aliased_Present (CompDef_Node, True);
@@ -2458,7 +2437,8 @@ package body Ch3 is
 
       end loop Ident_Loop;
 
-      TF_Semicolon;
+      P_Aspect_Specifications (Decl_Node);
+      -- TF_Semicolon;
    end P_Component_Items;
 
    --------------------------------
@@ -2605,7 +2585,7 @@ package body Ch3 is
          Saved_State : Saved_Scan_State;
 
       begin
-         if Token = Tok_Identifier or else Token = Tok_Operator_Symbol then
+         if Token = Tok_Identifier then
             Save_Scan_State (Saved_State);
             Scan; -- past possible junk subprogram name
 
@@ -2712,6 +2692,28 @@ package body Ch3 is
       return Def_Node;
    end P_Access_Definition;
 
+   -------------------------------
+   -- 3.10  Reactive Definition --
+   -------------------------------
+
+   --  REACTIVE_DEFINITION ::= reactive
+
+   --  The caller has checked that the initial token is REACTIVE
+
+   --  Error recovery: cannot raise Error_Resync
+
+   function P_Reactive_Type_Definition return Node_Id is
+
+      Def_Node : Node_Id;
+   begin
+      Def_Node := New_Node (N_Reactive_Type, Token_Ptr);
+      Scan; -- past REACTIVE
+
+      --  Parse with states => (Export_States_List), entry => procedure Spec
+
+      return Def_Node;
+   end P_Reactive_Type_Definition;
+
    -----------------------------------------
    -- 3.10.1  Incomplete Type Declaration --
    -----------------------------------------
@@ -2781,17 +2783,13 @@ package body Ch3 is
       Scan_State : Saved_Scan_State;
 
    begin
-      if Style_Check then Style.Check_Indentation; end if;
-
       case Token is
 
          when Tok_Function =>
-            Check_Bad_Layout;
             Append (P_Subprogram (Pf_Decl_Gins_Pbod_Rnam_Stub), Decls);
             Done := False;
 
          when Tok_For =>
-            Check_Bad_Layout;
 
             --  Check for loop (premature statement)
 
@@ -2815,16 +2813,13 @@ package body Ch3 is
             Done := False;
 
          when Tok_Generic =>
-            Check_Bad_Layout;
             Append (P_Generic, Decls);
             Done := False;
 
          when Tok_Identifier =>
-            Check_Bad_Layout;
             P_Identifier_Declarations (Decls, Done, In_Spec);
 
          when Tok_Package =>
-            Check_Bad_Layout;
             Append (P_Package (Pf_Decl_Gins_Pbod_Rnam_Stub), Decls);
             Done := False;
 
@@ -2833,29 +2828,70 @@ package body Ch3 is
             Done := False;
 
          when Tok_Procedure =>
-            Check_Bad_Layout;
             Append (P_Subprogram (Pf_Decl_Gins_Pbod_Rnam_Stub), Decls);
             Done := False;
 
+         when Tok_Reactive =>
+            Append (P_Reactive_Procedure (Pf_Decl_Gins_Pbod_Rnam_Stub), Decls);
+            Done := False;
+
          when Tok_Subtype =>
-            Check_Bad_Layout;
             Append (P_Subtype_Declaration, Decls);
             Done := False;
 
          when Tok_Type =>
-            Check_Bad_Layout;
             Append (P_Type_Declaration, Decls);
             Done := False;
 
          when Tok_Use =>
-            Check_Bad_Layout;
             Append (P_Use_Clause, Decls);
             Done := False;
 
          when Tok_With =>
-            Check_Bad_Layout;
-            Error_Msg_SC ("WITH can only appear in context clause");
-            raise Error_Resync;
+            if Aspect_Specifications_Present then
+
+               --  If we are after a semicolon, complain that it was ignored.
+               --  But we don't really ignore it, since we dump the aspects,
+               --  so we make the error message a normal fatal message which
+               --  will inhibit semantic analysis anyway).
+
+               if Prev_Token = Tok_Semicolon then
+                  Error_Msg_SP -- CODEFIX
+                    ("extra "";"" ignored");
+
+               --  If not just past semicolon, just complain that aspects are
+               --  not allowed at this point.
+
+               else
+                  Error_Msg_SC ("aspect specifications not allowed here");
+               end if;
+
+               --  Assume that this is a misplaced aspect specification within
+               --  a declarative list. After discarding the misplaced aspects
+               --  we can continue the scan.
+
+               Done := False;
+
+               declare
+                  Dummy_Node : constant Node_Id :=
+                                 New_Node (N_Package_Specification, Token_Ptr);
+                  pragma Warnings (Off, Dummy_Node);
+                  --  Dummy node to attach aspect specifications to. We will
+                  --  then throw them away.
+
+               begin
+                  P_Aspect_Specifications (Dummy_Node, Semicolon => True);
+               end;
+
+            --  Here if not aspect specifications case
+
+            else
+               Error_Msg_SC ("WITH can only appear in context clause");
+               raise Error_Resync;
+            end if;
+
+            --  Error_Msg_SC ("WITH can only appear in context clause");
+            --  raise Error_Resync;
 
          --  BEGIN terminates the scan of a sequence of declarations unless
          --  there is a missing subprogram body, see section on handling
@@ -3041,7 +3077,6 @@ package body Ch3 is
                else
                   Restore_Scan_State (Scan_State);
                   Scan_Reserved_Identifier (Force_Msg => True);
-                  Check_Bad_Layout;
                   P_Identifier_Declarations (Decls, Done, In_Spec);
                end if;
 

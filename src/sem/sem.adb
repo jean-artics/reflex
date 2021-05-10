@@ -26,9 +26,7 @@ with Debug;    use Debug;
 with Debug_A;  use Debug_A;
 with Einfo;    use Einfo;
 with Errout;   use Errout;
---with Expander; use Expander;
 with Fname;    use Fname;
-with HLO;      use HLO;
 with Lib;      use Lib;
 with Lib.Load; use Lib.Load;
 with Nlists;   use Nlists;
@@ -41,7 +39,6 @@ with Sem_Ch5;  use Sem_Ch5;
 with Sem_Ch6;  use Sem_Ch6;
 with Sem_Ch7;  use Sem_Ch7;
 with Sem_Ch8;  use Sem_Ch8;
---  with Sem_Ch9;  use Sem_Ch9;
 with Sem_Ch10; use Sem_Ch10;
 with Sem_Ch11; use Sem_Ch11;
 with Sem_Ch12; use Sem_Ch12;
@@ -93,6 +90,9 @@ package body Sem is
          when N_And_Then =>
             Analyze_Short_Circuit (N);
 
+         when N_Aspect_Specification =>
+            null;
+
          when N_Assignment_Statement =>
             Analyze_Assignment (N);
 
@@ -129,11 +129,11 @@ package body Sem is
          when N_Enumeration_Representation_Clause =>
             Analyze_Enumeration_Representation_Clause (N);
 
-         when N_Exception_Declaration =>
-            Analyze_Exception_Declaration (N);
-
-         when N_Exception_Renaming_Declaration =>
-            Analyze_Exception_Renaming (N);
+--           when N_Exception_Declaration =>
+--              Analyze_Exception_Declaration (N);
+--
+--           when N_Exception_Renaming_Declaration =>
+--              Analyze_Exception_Renaming (N);
 
          when N_Exit_Statement =>
             Analyze_Exit_Statement (N);
@@ -243,8 +243,8 @@ package body Sem is
          when N_Object_Renaming_Declaration  =>
             Analyze_Object_Renaming (N);
 
-         when N_Operator_Symbol =>
-            Analyze_Operator_Symbol (N);
+--           when N_Operator_Symbol =>
+--              null; -- Analyze_Operator_Symbol (N);
 
          when N_Op_Abs =>
             Analyze_Unary_Op (N);
@@ -366,18 +366,39 @@ package body Sem is
          when N_Qualified_Expression =>
             Analyze_Qualified_Expression (N);
 
-         when N_Raise_Statement =>
-            Analyze_Raise_Statement (N);
-
-         when N_Raise_xxx_Error =>
-            Analyze_Raise_xxx_Error (N);
-
          when N_Range =>
             Analyze_Range (N);
 
          when N_Range_Constraint =>
             Analyze_Range (Range_Expression (N));
+	    
+	 when N_Reactive_Type =>
+	    null;
+	 when N_Reactive_State =>
+	    null;
+	 when N_Reactive_Wait_Statement =>
+	    Analyze_Reactive_Wait_Statement (N);
 
+	 when N_Reactive_Pause_Statement =>
+	    Analyze_Reactive_Pause_Statement (N);
+	    
+	 when N_Reactive_Fork_Statement =>
+	    Analyze_Reactive_Fork_Statement (N);
+
+	 when N_Reactive_Fork_Alternative =>
+	    raise Program_Error;
+	    
+	 when N_Reactive_Select_Statement =>
+	    Analyze_Reactive_Select_Statement (N);
+
+	 when N_Reactive_Select_Alternative =>
+	    raise Program_Error;
+
+	 when N_Reactive_Abort_Statement =>
+	    null;
+	 when N_Reactive_Abort_Handler =>
+	    null;
+	    
          when N_Real_Literal =>
             Analyze_Real_Literal (N);
 
@@ -479,7 +500,7 @@ package body Sem is
            N_Constrained_Array_Definition           |
            N_Defining_Character_Literal             |
            N_Defining_Identifier                    |
-           N_Defining_Operator_Symbol               |
+           --N_Defining_Operator_Symbol               |
            N_Defining_Program_Unit_Name             |
            N_Derived_Type_Definition                |
            N_Designator                             |
@@ -487,7 +508,7 @@ package body Sem is
            N_Discriminant_Association               |
            N_Elsif_Part                             |
            N_Enumeration_Type_Definition            |
-           N_Exception_Handler                      |
+--           N_Exception_Handler                      |
            N_Floating_Point_Definition              |
            N_Formal_Derived_Type_Definition         |
            N_Formal_Discrete_Type_Definition        |
@@ -1182,14 +1203,6 @@ package body Sem is
 
       if not Analyzed (Comp_Unit) then
          Initialize_Version (Current_Sem_Unit);
-         if HLO_Active then
-            New_Nodes_OK := 1;
-            Do_Analyze;
-            Reset_Analyzed_Flags (Comp_Unit);
-            High_Level_Optimize (Comp_Unit);
-            New_Nodes_OK := 0;
-         end if;
-
          Do_Analyze;
       end if;
 

@@ -450,7 +450,6 @@ package body Repinfo is
          when Convention_Intrinsic => Write_Line ("InLineinsic");
          when Convention_Assembler => Write_Line ("Assembler");
          when Convention_C         => Write_Line ("C");
-         when Convention_CPP       => Write_Line ("C++");
          when Convention_Stdcall   => Write_Line ("Stdcall");
          when Convention_Stubbed   => Write_Line ("Stubbed");
       end case;

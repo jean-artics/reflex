@@ -53,7 +53,7 @@ package Sem_Cat is
    --  or protected unit. Used to validate if the library unit is Pure
    --  (RM 10.2.1(16)).
 
-   procedure Set_Categorization_From_Pragmas (N : Node_Id);
+--   procedure Set_Categorization_From_Pragmas (N : Node_Id);
    --  Since validation of categorization dependency is done during Analyze,
    --  categorization flags from following pragmas should be set before
    --  validation begin. N is the N_Compilation_Unit node.
@@ -91,27 +91,6 @@ package Sem_Cat is
    --  a preelaborable library unit, including creation of task objects etc.
    --  Note that this is called when the corresponding object is frozen since
    --  the checks cannot be made before knowing if the object is imported.
-
-   procedure Validate_RCI_Declarations (P : Entity_Id);
-   --  Apply semantic checks given in  E2.3(10-14).
-
-   procedure Validate_RCI_Subprogram_Declaration (N : Node_Id);
-   --  Check for RCI unit subprogram declarations with respect to
-   --  in-lined subprogram and subprogram with access parameter or
-   --  limited type parameter without Read and Write.
-
-   procedure Validate_Remote_Access_To_Class_Wide_Type (N : Node_Id);
-   --  Checks that Storage_Pool and Storage_Size attribute references are
-   --  not applied to remote access-to-class-wide types. And the expected
-   --  type for an allocator shall not be a remote access-to-class-wide
-   --  type. And a remote access-to-class-wide type shall not be an actual
-   --  parameter for a generic formal access type. RM E.2.3(22).
-
-   procedure Validate_SP_Access_Object_Type_Decl (T : Entity_Id);
-   --  Check validity of declaration if shared passive unit. It should not
-   --  contain the declaration of an access-to-object type whose designated
-   --  type is a class-wide type ,task type or protected type. E.2.1(7).
-   --  T is the entity of the declared type.
 
    procedure Validate_Static_Object_Name (N : Node_Id);
    --  In the elaboration code of a preelaborated library unit, check

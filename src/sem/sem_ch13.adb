@@ -467,36 +467,6 @@ package body Sem_Ch13 is
             end if;
          end Alignment_Block;
 
-         ---------------
-         -- Bit_Order --
-         ---------------
-
-         --  Bit_Order attribute definition clause
-
-         when Attribute_Bit_Order => Bit_Order : declare
-         begin
-            if not Is_Record_Type (U_Ent) then
-               Error_Msg_N
-                 ("Bit_Order can only be defined for record type", Nam);
-
-            else
-               Analyze_And_Resolve (Expr, RTE (RE_Bit_Order));
-
-               if Etype (Expr) = Any_Type then
-                  return;
-
-               elsif not Is_Static_Expression (Expr) then
-                  Flag_Non_Static_Expr
-                    ("Bit_Order requires static expression!", Expr);
-
-               else
-                  if (Expr_Value (Expr) = 0) /= Bytes_Big_Endian then
-                     Set_Reverse_Bit_Order (U_Ent, True);
-                  end if;
-               end if;
-            end if;
-         end Bit_Order;
-
          --------------------
          -- Component_Size --
          --------------------
@@ -572,32 +542,6 @@ package body Sem_Ch13 is
             end if;
          end Component_Size_Case;
 
-         ------------------
-         -- External_Tag --
-         ------------------
-
-         when Attribute_External_Tag => External_Tag :
-         begin
-            if not Is_Tagged_Type (U_Ent) then
-               Error_Msg_N ("should be a tagged type", Nam);
-            end if;
-
-            Analyze_And_Resolve (Expr, Standard_String);
-
-            if not Is_Static_Expression (Expr) then
-               Flag_Non_Static_Expr
-                 ("static string required for tag name!", Nam);
-            end if;
-
-            Set_Has_External_Tag_Rep_Clause (U_Ent);
-         end External_Tag;
-
-         -----------
-         -- Input --
-         -----------
-
-         when Attribute_Input => null;
-
          -------------------
          -- Machine_Radix --
          -------------------
@@ -644,18 +588,6 @@ package body Sem_Ch13 is
                Alignment_Check_For_Esize_Change (U_Ent);
             end if;
          end Object_Size;
-
-         ------------
-         -- Output --
-         ------------
-
-         when Attribute_Output => null;
-
-         ----------
-         -- Read --
-         ----------
-
-         when Attribute_Read => null;
 
          ----------
          -- Size --
@@ -755,41 +687,6 @@ package body Sem_Ch13 is
                Set_Has_Size_Clause (U_Ent);
             end if;
          end Size;
-
-         -----------
-         -- Small --
-         -----------
-
-         --  Small attribute definition clause
-
-         when Attribute_Small => Small : declare
-            Implicit_Base : constant Entity_Id := Base_Type (U_Ent);
-            Small         : Ureal;
-
-         begin
-            Analyze_And_Resolve (Expr, Any_Real);
-
-            if Etype (Expr) = Any_Type then
-               return;
-
-            elsif not Is_Static_Expression (Expr) then
-               Flag_Non_Static_Expr
-                 ("small requires static expression!", Expr);
-               return;
-
-            else
-               Small := Expr_Value_R (Expr);
-
-               if Small <= Ureal_0 then
-                  Error_Msg_N ("small value must be greater than zero", Expr);
-                  return;
-               end if;
-
-            end if;
-
-               Error_Msg_N
-                 ("small requires an ordinary fixed point type", Nam);
-         end Small;
 
          ------------------
          -- Storage_Size --
@@ -977,14 +874,6 @@ package body Sem_Ch13 is
          end Value_Size;
 
          -----------
-         -- Write --
-         -----------
-
-         --  Write attribute definition clause
-         --  check for class-wide case will be performed later
-
-         when Attribute_Write => null;
-
          --  All other attributes cannot be set
 
          when others =>
@@ -1047,11 +936,11 @@ package body Sem_Ch13 is
 
          --  No exception handlers allowed
 
-         if Present (Exception_Handlers (HSS)) then
-            Error_Msg_N
-              ("exception handlers not permitted in machine code subprogram",
-               First (Exception_Handlers (HSS)));
-         end if;
+--           if Present (Exception_Handlers (HSS)) then
+--              Error_Msg_N
+--                ("exception handlers not permitted in machine code subprogram",
+--                 First (Exception_Handlers (HSS)));
+--           end if;
 
          --  No declarations other than use clauses and pragmas (we allow
          --  certain internally generated declarations as well).
@@ -2458,16 +2347,7 @@ package body Sem_Ch13 is
       if Nkind (N) /= N_Attribute_Definition_Clause then
          return False;
       else
-         declare
-            Id    : constant Attribute_Id := Get_Attribute_Id (Chars (N));
-
-         begin
-            return Id = Attribute_Input
-              or else Id = Attribute_Output
-              or else Id = Attribute_Read
-              or else Id = Attribute_Write
-              or else Id = Attribute_External_Tag;
-         end;
+         return False;
       end if;
    end Is_Operational_Item;
 

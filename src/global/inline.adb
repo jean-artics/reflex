@@ -386,13 +386,13 @@ package body Inline is
             return False;
          end if;
 
-         if Present
-          (Exception_Handlers
-            (Handled_Statement_Sequence
-                 (Unit_Declaration_Node (Corresponding_Body (Decl)))))
-         then
-            return True;
-         end if;
+--           if Present
+--            (Exception_Handlers
+--              (Handled_Statement_Sequence
+--                   (Unit_Declaration_Node (Corresponding_Body (Decl)))))
+--           then
+--              return True;
+--           end if;
 
          Ent := First_Entity (Body_Ent);
 
